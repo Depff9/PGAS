@@ -1,0 +1,156 @@
+/** Демо-пользователи. Пароль для всех: demo123 */
+export const DEMO_PASSWORD = 'demo123';
+
+export const ROLES = {
+  STUDENT: 'student',
+  COMMISSION: 'commission',
+  ADMIN: 'admin',
+};
+
+export const ROLE_LABELS = {
+  [ROLES.STUDENT]: 'Студент',
+  [ROLES.COMMISSION]: 'Член комиссии',
+  [ROLES.ADMIN]: 'Администратор',
+};
+
+export const initialUsers = [
+  {
+    id: 'u1',
+    email: 'ivanov@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Иванов',
+    firstName: 'Алексей',
+    middleName: 'Сергеевич',
+    facultyId: 'f-feia',
+    group: 'ЭЭ-22',
+    recordBookNumber: '2021001234',
+    studentCardNumber: 'СБ-001234',
+  },
+  {
+    id: 'u2',
+    email: 'petrova@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Петрова',
+    firstName: 'Мария',
+    middleName: 'Андреевна',
+    facultyId: 'f-feis',
+    group: 'ЭК-22',
+    recordBookNumber: '2022005678',
+    studentCardNumber: 'СБ-005678',
+  },
+  {
+    id: 'u5',
+    email: 'sidorov@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Сидоров',
+    firstName: 'Игорь',
+    middleName: 'Павлович',
+    facultyId: 'f-feia',
+    group: 'ЭЭ-22',
+    recordBookNumber: '2021009876',
+    studentCardNumber: 'СБ-009876',
+  },
+  {
+    id: 'u6',
+    email: 'kuznetsova@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Кузнецова',
+    firstName: 'Анна',
+    middleName: 'Олеговна',
+    facultyId: 'f-gpf',
+    group: 'ПД-23',
+    recordBookNumber: '2023001122',
+    studentCardNumber: 'СБ-011122',
+  },
+  {
+    id: 'u7',
+    email: 'volkov@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Волков',
+    firstName: 'Никита',
+    middleName: 'Андреевич',
+    facultyId: 'f-ftsil',
+    group: 'ТС-22',
+    recordBookNumber: '2021003344',
+    studentCardNumber: 'СБ-003344',
+  },
+  {
+    id: 'u8',
+    email: 'morozova@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Морозова',
+    firstName: 'Екатерина',
+    middleName: 'Дмитриевна',
+    facultyId: 'f-feis',
+    group: 'СТ-23',
+    recordBookNumber: '2023005566',
+    studentCardNumber: 'СБ-005566',
+  },
+  {
+    id: 'u9',
+    email: 'lebedev@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Лебедев',
+    firstName: 'Павел',
+    middleName: 'Иванович',
+    facultyId: 'f-feia',
+    group: 'АТ-23',
+    recordBookNumber: '2023007788',
+    studentCardNumber: 'СБ-007788',
+  },
+  {
+    id: 'u10',
+    email: 'sokolova@student.brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.STUDENT,
+    lastName: 'Соколова',
+    firstName: 'Виктория',
+    middleName: 'Петровна',
+    facultyId: 'f-gpf',
+    group: 'ИЯ-22',
+    recordBookNumber: '2022009900',
+    studentCardNumber: 'СБ-009900',
+  },
+  {
+    id: 'u3',
+    email: 'commission@brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.COMMISSION,
+    lastName: 'Смирнова',
+    firstName: 'Елена',
+    middleName: 'Викторовна',
+    facultyId: null,
+    group: null,
+    recordBookNumber: null,
+    studentCardNumber: null,
+  },
+  {
+    id: 'u4',
+    email: 'admin@brgu.ru',
+    password: DEMO_PASSWORD,
+    role: ROLES.ADMIN,
+    lastName: 'Козлов',
+    firstName: 'Дмитрий',
+    middleName: 'Игоревич',
+    facultyId: null,
+    group: null,
+    recordBookNumber: null,
+    studentCardNumber: null,
+  },
+];
+
+export function formatFullName(user) {
+  if (!user) return '';
+  return [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
+}
+
+export function isStudent(user) {
+  return user?.role === ROLES.STUDENT;
+}

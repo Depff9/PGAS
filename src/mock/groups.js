@@ -1,0 +1,22 @@
+/** Группы БрГУ (формат КОД-ГОД), по открытым данным деканата */
+export const initialGroups = [
+  { id: 'g-ee22', name: 'ЭЭ-22', facultyId: 'f-feia' },
+  { id: 'g-ee23', name: 'ЭЭ-23', facultyId: 'f-feia' },
+  { id: 'g-at22', name: 'АТ-22', facultyId: 'f-feia' },
+  { id: 'g-at23', name: 'АТ-23', facultyId: 'f-feia' },
+  { id: 'g-is22', name: 'ИС-22', facultyId: 'f-feia' },
+  { id: 'g-ek22', name: 'ЭК-22', facultyId: 'f-feis' },
+  { id: 'g-ek23', name: 'ЭК-23', facultyId: 'f-feis' },
+  { id: 'g-st22', name: 'СТ-22', facultyId: 'f-feis' },
+  { id: 'g-st23', name: 'СТ-23', facultyId: 'f-feis' },
+  { id: 'g-pi22', name: 'ПИ-22', facultyId: 'f-feis' },
+  { id: 'g-pd22', name: 'ПД-22', facultyId: 'f-gpf' },
+  { id: 'g-pd23', name: 'ПД-23', facultyId: 'f-gpf' },
+  { id: 'g-iya22', name: 'ИЯ-22', facultyId: 'f-gpf' },
+  { id: 'g-iya23', name: 'ИЯ-23', facultyId: 'f-gpf' },
+  { id: 'g-ts22', name: 'ТС-22', facultyId: 'f-ftsil' },
+  { id: 'g-ts23', name: 'ТС-23', facultyId: 'f-ftsil' },
+  { id: 'g-ld21', name: 'ЛД-21', facultyId: 'f-ftsil' },
+  { id: 'g-ld22', name: 'ЛД-22', facultyId: 'f-ftsil' },
+  { id: 'g-td22', name: 'ТД-22', facultyId: 'f-ftsil' },
+];
