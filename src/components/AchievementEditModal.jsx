@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import TooltipInfo from './TooltipInfo';
-import { ACHIEVEMENT_STATUS, ACHIEVEMENT_STATUS_LABELS } from '../constants/achievements';
+import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { readFileAsAttachment } from '../utils/files';
-import { calculateAchievementScore } from '../utils/scoring';
 
 export default function AchievementEditModal({
   achievement,
   direction,
-  scoringMatrix,
   onClose,
   onSave,
   onDelete,
@@ -21,12 +19,6 @@ export default function AchievementEditModal({
   const [attachments, setAttachments] = useState(achievement?.attachments || []);
   const [error, setError] = useState('');
   const [fileError, setFileError] = useState('');
-
-  const preview = calculateAchievementScore(
-    { achievementLevel, description },
-    direction,
-    scoringMatrix
-  );
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -58,7 +50,7 @@ export default function AchievementEditModal({
       description: description.trim(),
       achievementLevel,
       attachments,
-      score: preview,
+      score: 0,
       status: asDraft
         ? ACHIEVEMENT_STATUS.DRAFT
         : isRevision
@@ -106,11 +98,10 @@ export default function AchievementEditModal({
             Уровень <TooltipInfo fieldKey="application.level" />
           </label>
           <select value={achievementLevel} onChange={(e) => setAchievementLevel(e.target.value)}>
-            {scoringMatrix.levels.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.label} — {l.points} б.
-              </option>
-            ))}
+            <option value="faculty">Внутривузовский</option>
+            <option value="regional">Региональный</option>
+            <option value="federal">Всероссийский</option>
+            <option value="international">Международный</option>
           </select>
         </div>
         <div className="form-group">
@@ -151,19 +142,26 @@ export default function AchievementEditModal({
             </ul>
           )}
         </div>
-        <div className="score-preview">
-          Предварительно: <strong>{preview}</strong> баллов
-          {achievement?.status && (
-            <span className="form-hint" style={{ marginLeft: '1rem' }}>
-              Статус: {ACHIEVEMENT_STATUS_LABELS[achievement.status]}
-            </span>
-          )}
-        </div>
+        <p className="form-hint" style={{ marginBottom: '0.75rem' }}>
+          Баллы назначаются комиссией после проверки достижения.
+        </p>
         <div className="form-actions">
-          <button type="button" className="btn btn--primary" onClick={() => submit(false)}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => submit(false)}
+            title="Отправить на проверку"
+          >
+            <TooltipInfo fieldKey="application.submit" />
             {isRevision ? 'Отправить после правок' : 'Отправить на проверку'}
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => submit(true)}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => submit(true)}
+            title="Сохранить черновик"
+          >
+            <TooltipInfo fieldKey="application.draft" />
             Черновик
           </button>
           {achievement?.id && onDelete && (
@@ -171,7 +169,13 @@ export default function AchievementEditModal({
               Удалить
             </button>
           )}
-          <button type="button" className="btn btn--ghost" onClick={onClose}>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={onClose}
+            title="Закрыть форму"
+          >
+            <TooltipInfo fieldKey="application.cancel" />
             Отмена
           </button>
         </div>

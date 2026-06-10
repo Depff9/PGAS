@@ -46,3 +46,27 @@ export function buildFacultyRating(facultyId, users, achievements, faculties) {
     })),
   };
 }
+
+export function buildOverallRating(users, achievements, faculties) {
+  return users
+    .filter((u) => u.role === ROLES.STUDENT)
+    .map((student) => {
+      const faculty = findFaculty(faculties, student.facultyId);
+      return {
+        student,
+        fullName: formatFullName(student),
+        facultyLabel: faculty ? getFacultyLabel(faculty) : '—',
+        totalScore: getStudentTotalScore(student.id, achievements),
+        achievementsCount: achievements.filter(
+          (a) => a.userId === student.id && COUNTED_STATUSES.includes(a.status)
+        ).length,
+      };
+    })
+    .filter((row) => row.achievementsCount > 0)
+    .sort(
+      (a, b) =>
+        b.totalScore - a.totalScore ||
+        a.fullName.localeCompare(b.fullName, 'ru')
+    )
+    .map((row, index) => ({ ...row, place: index + 1 }));
+}

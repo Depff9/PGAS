@@ -35,12 +35,16 @@ export default function Navbar() {
         </Link>
 
         <nav className="navbar__nav" aria-label="Основное меню">
-          <NavLink to="/" end className={({ isActive }) => navClass(isActive)}>
-            Главная
-          </NavLink>
-          <NavLink to="/directions" className={({ isActive }) => navClass(isActive)}>
-            Направления
-          </NavLink>
+          {(!user || user.role === ROLES.STUDENT) && (
+            <>
+              <NavLink to="/" end className={({ isActive }) => navClass(isActive)}>
+                Главная
+              </NavLink>
+              <NavLink to="/directions" className={({ isActive }) => navClass(isActive)}>
+                Направления
+              </NavLink>
+            </>
+          )}
           {user?.role === ROLES.STUDENT && (
             <>
               <NavLink to="/rating" className={({ isActive }) => navClass(isActive)}>
@@ -62,12 +66,12 @@ export default function Navbar() {
           )}
           {user?.role === ROLES.COMMISSION && (
             <NavLink to="/commission" className={() => navClass(isCommissionActive)}>
-              Комиссия
+              Кабинет комиссии
             </NavLink>
           )}
           {user?.role === ROLES.ADMIN && (
             <NavLink to="/admin" className={() => navClass(isAdminActive)}>
-              Админ
+              Админ панель
             </NavLink>
           )}
         </nav>

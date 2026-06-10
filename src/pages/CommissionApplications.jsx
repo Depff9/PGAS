@@ -16,6 +16,8 @@ export default function CommissionApplications() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const users = useAppSelector((s) => s.data.users);
   const faculties = useAppSelector((s) => s.data.faculties);
+  const user = useAppSelector((s) => s.auth.user);
+  const allowedDirections = user?.permissions?.allowedDirectionIds || [];
 
   const list = submissions
     .map((sub) => {
@@ -29,13 +31,14 @@ export default function CommissionApplications() {
         facultyLabel: faculty ? getFacultyLabel(faculty) : '—',
         filled: countFilledAchievements(subAch),
         totalScore: getSubmissionTotalScore(subAch),
+        matchesPermission: subAch.some((a) => allowedDirections.includes(a.directionId)),
       };
     })
     .filter(Boolean)
-    .filter((row) => row.filled > 0 || row.sub.status !== 'draft');
+    .filter((row) => row.matchesPermission && (row.filled > 0 || row.sub.status !== 'draft'));
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Заявления на ПГАС</h1>
         <p>Одно заявление на студента — внутри достижения по направлениям</p>

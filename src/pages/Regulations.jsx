@@ -1,20 +1,27 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { commissionSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setRegulations, setHistory } from '../store/dataSlice';
+import { setNotifications } from '../store/dataSlice';
 import { ROLES, formatFullName } from '../mock/users';
 import { createHistoryEntry } from '../utils/history';
 import Navbar from '../components/Navbar';
+import { buildRegulationsUpdatedNotification } from '../utils/notifications';
 
 export default function Regulations({ readOnly = false }) {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
+  const directions = useAppSelector((s) => s.data.directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const history = useAppSelector((s) => s.data.history);
+  const users = useAppSelector((s) => s.data.users);
+  const notifications = useAppSelector((s) => s.data.notifications);
   const canEdit = !readOnly && user?.role === ROLES.COMMISSION;
+  const shouldRedirect =
+    !readOnly && user?.role === ROLES.COMMISSION && !user.permissions?.canEditRegulations;
 
-  const directions = useAppSelector((s) => s.data.directions);
   const [title, setTitle] = useState(regulations.title);
   const [sections, setSections] = useState(regulations.sections || []);
   const [directionLimits, setDirectionLimits] = useState(
@@ -22,6 +29,10 @@ export default function Regulations({ readOnly = false }) {
   );
   const [defaultMax, setDefaultMax] = useState(regulations.defaultMaxPerDirection ?? 7);
   const [saved, setSaved] = useState(false);
+
+  if (shouldRedirect) {
+    return <Navigate to="/commission" replace />;
+  }
 
   const updateSection = (id, field, value) => {
     setSections(sections.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
@@ -50,6 +61,15 @@ export default function Regulations({ readOnly = false }) {
       updatedBy: user?.id,
     };
     dispatch(setRegulations(payload));
+    const infoNotifications = users
+      .filter((u) => u.role === ROLES.STUDENT)
+      .map((u) =>
+        buildRegulationsUpdatedNotification(
+          u.id,
+          'Сроки или правила подачи заявлений обновлены комиссией.'
+        )
+      );
+    dispatch(setNotifications([...infoNotifications, ...notifications]));
     dispatch(
       setHistory([
         createHistoryEntry({
@@ -207,7 +227,7 @@ export default function Regulations({ readOnly = false }) {
   }
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       {content}
     </DashboardLayout>
   );

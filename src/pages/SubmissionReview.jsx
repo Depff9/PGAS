@@ -4,7 +4,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import AchievementReviewModal from '../components/AchievementReviewModal';
 import { commissionSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setAchievements, setNotifications, setSubmissions } from '../store/dataSlice';
+import { setAchievements, setHistory, setNotifications, setSubmissions } from '../store/dataSlice';
 import { formatFullName } from '../mock/users';
 import {
   getSubmissionAchievements,
@@ -20,6 +20,7 @@ import {
 } from '../utils/notifications';
 import { getEffectiveScore } from '../utils/scoring';
 import { SUBMISSION_STATUS_LABELS } from '../constants/submissions';
+import { createHistoryEntry } from '../utils/history';
 
 export default function SubmissionReview() {
   const { submissionId } = useParams();
@@ -29,8 +30,10 @@ export default function SubmissionReview() {
   const users = useAppSelector((s) => s.data.users);
   const directions = useAppSelector((s) => s.data.directions);
   const regulations = useAppSelector((s) => s.data.regulations);
-  const scoringMatrix = useAppSelector((s) => s.data.scoringMatrix);
   const notifications = useAppSelector((s) => s.data.notifications);
+  const user = useAppSelector((s) => s.auth.user);
+  const allowedDirections = user?.permissions?.allowedDirectionIds || [];
+  const history = useAppSelector((s) => s.data.history);
 
   const submission = submissions.find((s) => s.id === submissionId);
   const student = users.find((u) => u.id === submission?.userId);
@@ -44,7 +47,7 @@ export default function SubmissionReview() {
 
   if (!submission || !student) {
     return (
-      <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+      <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
         <div className="alert alert--error">Заявление не найдено</div>
         <Link to="/commission/applications">← К списку</Link>
       </DashboardLayout>
@@ -56,6 +59,20 @@ export default function SubmissionReview() {
     dispatch(setAchievements(merged));
     const synced = syncSubmissionFromAchievements(submission, merged);
     dispatch(setSubmissions(submissions.map((s) => (s.id === synced.id ? synced : s))));
+    dispatch(
+      setHistory([
+        createHistoryEntry({
+          category: 'commission.review',
+          action: 'update',
+          summary: `Проверено достижение "${updated.title}" (${ACHIEVEMENT_STATUS_LABELS[updated.status]})`,
+          userId: user.id,
+          userName: formatFullName(user),
+          targetId: submission.id,
+          metadata: { achievementId: updated.id, status: updated.status },
+        }),
+        ...history,
+      ])
+    );
     if (shouldNotifyStatus(updated.status)) {
       const dirTitle = directions.find((d) => d.id === updated.directionId)?.title;
       dispatch(
@@ -70,7 +87,7 @@ export default function SubmissionReview() {
   };
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <Link to="/commission/applications" className="btn btn--ghost btn--sm">
         ← Все заявления
       </Link>
@@ -84,7 +101,7 @@ export default function SubmissionReview() {
       </header>
 
       {directions
-        .filter((d) => d.active)
+        .filter((d) => d.active && allowedDirections.includes(d.id))
         .map((d) => {
           const max = getDirectionLimit(regulations, d.id);
           const dirAch = subAch.filter((a) => a.directionId === d.id);
@@ -137,10 +154,15 @@ export default function SubmissionReview() {
           achievement={reviewAch}
           student={student}
           direction={reviewDir}
-          scoringMatrix={scoringMatrix}
           onClose={() => setReviewId(null)}
           onSave={saveAch}
         />
+      )}
+
+      {subAch.filter((a) => allowedDirections.includes(a.directionId)).length === 0 && (
+        <div className="empty-state card">
+          В этом заявлении нет достижений по направлениям, доступным вам для оценки.
+        </div>
       )}
     </DashboardLayout>
   );

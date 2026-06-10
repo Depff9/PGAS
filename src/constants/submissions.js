@@ -15,3 +15,4 @@ export const SUBMISSION_STATUS_LABELS = {
 };
 
 export const CURRENT_ACADEMIC_YEAR = '2025–2026';
+export const CURRENT_SEMESTER_LABEL = '1 семестр 2025–2026';

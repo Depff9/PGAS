@@ -13,7 +13,7 @@ import { defaultScoringMatrix } from '../mock/scoringMatrix';
 import { migrateUsers } from '../utils/migrateUser';
 import { hydrateAchievements } from '../utils/migrateData';
 
-const DATA_VERSION = 4;
+const DATA_VERSION = 5;
 
 const seeds = {
   [STORAGE_KEYS.USERS]: initialUsers,

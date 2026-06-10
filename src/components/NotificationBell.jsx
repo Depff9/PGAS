@@ -8,7 +8,8 @@ const TYPE_ICON = {
   [NOTIFICATION_TYPES.APPROVED]: '✅',
   [NOTIFICATION_TYPES.REJECTED]: '❌',
   [NOTIFICATION_TYPES.REVISION]: '✏️',
-  [NOTIFICATION_TYPES.DEADLINE]: '⏰',
+  [NOTIFICATION_TYPES.DEADLINE]: '📅',
+  [NOTIFICATION_TYPES.INFO]: 'ℹ️',
 };
 
 export default function NotificationBell({ userId }) {

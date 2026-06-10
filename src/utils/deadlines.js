@@ -1,8 +1,6 @@
 import { buildDeadlineNotification } from './notifications';
 import { NOTIFICATION_TYPES } from './notifications';
 
-const DEADLINE_KEY = 'pgas-deadline-2025';
-
 export function ensureDeadlineNotifications(users, notifications, regulations) {
   const students = users.filter((u) => u.role === 'student');
   const deadlineText =

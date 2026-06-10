@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType } from 'docx';
 import { formatFullName } from '../mock/users';
 import { getFacultyLabel, findFaculty } from '../mock/faculties';
 import { ACHIEVEMENT_STATUS_LABELS } from '../constants/achievements';
@@ -6,6 +7,27 @@ import { SUBMISSION_STATUS_LABELS } from '../constants/submissions';
 import { getEffectiveScore } from './scoring';
 import { UNIVERSITY } from '../config/university';
 import { getSubmissionAchievements, getSubmissionTotalScore } from './submissions';
+
+const LEVEL_LABELS = {
+  faculty: 'Внутривузовский',
+  regional: 'Региональный',
+  federal: 'Всероссийский',
+  international: 'Международный',
+};
+
+const DEFAULT_EXPORT_COLUMNS = [
+  { id: 'student', label: 'Студент' },
+  { id: 'group', label: 'Группа' },
+  { id: 'faculty', label: 'Факультет' },
+  { id: 'submissionStatus', label: 'Статус заявления' },
+  { id: 'totalScore', label: 'Сумма баллов' },
+  { id: 'direction', label: 'Направление' },
+  { id: 'slot', label: '№ достижения' },
+  { id: 'title', label: 'Достижение' },
+  { id: 'achievementStatus', label: 'Статус достижения' },
+  { id: 'score', label: 'Баллы комиссии' },
+  { id: 'level', label: 'Уровень достижения' },
+];
 
 export function buildExportRows(submissions, achievements, users, directions, faculties) {
   const rows = [];
@@ -48,38 +70,80 @@ export function buildExportRows(submissions, achievements, users, directions, fa
           title: a.title,
           achievementStatus: ACHIEVEMENT_STATUS_LABELS[a.status] || a.status,
           score: getEffectiveScore(a),
-          level: a.achievementLevel,
+          level: LEVEL_LABELS[a.achievementLevel] || a.achievementLevel || '—',
         });
       });
     });
   return rows;
 }
 
-export function downloadXlsx(filename, rows) {
-  const data = rows.map((r) => ({
-    Студент: r.student,
-    Группа: r.group,
-    Факультет: r.faculty,
-    'Статус заявления': r.submissionStatus,
-    'Сумма баллов': r.totalScore,
-    Направление: r.direction,
-    '№ достижения': r.slot,
-    Достижение: r.title,
-    'Статус достижения': r.achievementStatus,
-    Баллы: r.score,
-    Уровень: r.level,
-  }));
+export function downloadXlsx(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
+  const data = rows.map((r) =>
+    Object.fromEntries(columns.map((col) => [col.label, r[col.id] ?? '—']))
+  );
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Ведомость ПГАС');
   XLSX.writeFile(wb, filename);
 }
 
-export function downloadCsv(filename, rows) {
-  downloadXlsx(filename.replace(/\.csv$/i, '.xlsx'), rows);
+export function downloadCsv(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
+  downloadXlsx(filename.replace(/\.csv$/i, '.xlsx'), rows, columns);
 }
 
-function buildReportHtml(rows) {
+export function downloadDoc(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
+  const header = columns.map((c) => c.label);
+
+  const toCell = (text, bold = false) =>
+    new TableCell({
+      children: [new Paragraph({ children: [new TextRun({ text: String(text ?? ''), bold })] })],
+    });
+
+  const tableRows = [
+    new TableRow({ children: header.map((h) => toCell(h, true)) }),
+    ...rows.map(
+      (r) =>
+        new TableRow({
+          children: columns.map((col) => toCell(r[col.id] ?? '—')),
+        })
+    ),
+  ];
+
+  const doc = new Document({
+    sections: [
+      {
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: 'Ведомость заявлений на ПГАС', bold: true, size: 32 })],
+          }),
+          new Paragraph({ children: [new TextRun(UNIVERSITY.officialName)] }),
+          new Paragraph({
+            children: [new TextRun(`Сформировано: ${new Date().toLocaleString('ru-RU')}`)],
+          }),
+          new Paragraph(''),
+          new Table({
+            rows: tableRows,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+          }),
+        ],
+      },
+    ],
+  });
+
+  Packer.toBlob(doc).then((blob) => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+      link.remove();
+    }, 0);
+  });
+}
+
+function buildReportHtml(rows, columns = DEFAULT_EXPORT_COLUMNS) {
   const esc = (s) =>
     String(s ?? '')
       .replace(/&/g, '&amp;')
@@ -108,17 +172,13 @@ th{background:#dbeafe}
 <p class="no-print"><button type="button" onclick="window.print()">Печать / сохранить как PDF</button></p>
 <table>
 <thead><tr>
-<th>Студент</th><th>Группа</th><th>Факультет</th><th>Заявление</th><th>Сумма</th>
-<th>Направление</th><th>№</th><th>Достижение</th><th>Статус</th><th>Баллы</th>
+${columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}
 </tr></thead>
 <tbody>
 ${rows
   .map(
     (r) => `<tr>
-<td>${esc(r.student)}</td><td>${esc(r.group)}</td><td>${esc(r.faculty)}</td>
-<td>${esc(r.submissionStatus)}</td><td>${esc(r.totalScore)}</td>
-<td>${esc(r.direction)}</td><td>${esc(r.slot)}</td><td>${esc(r.title)}</td>
-<td>${esc(r.achievementStatus)}</td><td>${esc(r.score)}</td></tr>`
+${columns.map((c) => `<td>${esc(r[c.id] ?? '—')}</td>`).join('')}</tr>`
   )
   .join('')}
 </tbody>
@@ -128,8 +188,8 @@ ${rows
 }
 
 /** Печать через скрытый iframe — обходит блокировку about:blank */
-export function printPdfReport(rows) {
-  const html = buildReportHtml(rows);
+export function printPdfReport(rows, columns = DEFAULT_EXPORT_COLUMNS) {
+  const html = buildReportHtml(rows, columns);
   const iframe = document.createElement('iframe');
   iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
   document.body.appendChild(iframe);

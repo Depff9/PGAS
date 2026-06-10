@@ -23,15 +23,6 @@ export default function ScoringMatrix() {
     });
   };
 
-  const updateBonus = (index, field, value) => {
-    const bonuses = [...local.descriptionBonuses];
-    bonuses[index] = {
-      ...bonuses[index],
-      [field]: field === 'points' || field === 'minLength' ? Number(value) : value,
-    };
-    setLocal({ ...local, descriptionBonuses: bonuses });
-  };
-
   const save = () => {
     const payload = { ...local, updatedAt: new Date().toISOString() };
     dispatch(setScoringMatrix(payload));
@@ -53,10 +44,10 @@ export default function ScoringMatrix() {
   };
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
-        <h1>Матрица баллов</h1>
-        <p>Настройка уровней достижений и бонусов за полноту описания</p>
+        <h1>Уровни достижений</h1>
+        <p>Справочник уровней без автоматического начисления баллов</p>
       </header>
 
       {saved && <div className="alert alert--success">Матрица сохранена</div>}
@@ -66,43 +57,15 @@ export default function ScoringMatrix() {
         {local.levels.map((l) => (
           <div key={l.id} className="form-row form-row--2" style={{ marginBottom: '0.75rem' }}>
             <div className="form-group">
-              <label>{l.id}</label>
+              <label>Уровень</label>
               <input
                 value={l.label}
                 onChange={(e) => updateLevel(l.id, 'label', e.target.value)}
               />
             </div>
             <div className="form-group">
-              <label>Баллы</label>
-              <input
-                type="number"
-                value={l.points}
-                onChange={(e) => updateLevel(l.id, 'points', e.target.value)}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="card editor-block">
-        <h3 style={{ marginTop: 0 }}>Бонусы за описание</h3>
-        {local.descriptionBonuses.map((b, i) => (
-          <div key={i} className="form-row form-row--2" style={{ marginBottom: '0.75rem' }}>
-            <div className="form-group">
-              <label>Мин. символов</label>
-              <input
-                type="number"
-                value={b.minLength}
-                onChange={(e) => updateBonus(i, 'minLength', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>+ баллов</label>
-              <input
-                type="number"
-                value={b.points}
-                onChange={(e) => updateBonus(i, 'points', e.target.value)}
-              />
+              <label>Комментарий</label>
+              <input value="Баллы выставляются комиссией вручную" disabled />
             </div>
           </div>
         ))}

@@ -2,8 +2,6 @@ import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { initialAchievements } from '../mock/achievements';
 import { initialSubmissions } from '../mock/submissions';
 import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
-import { calculateAchievementScore } from './scoring';
-import { defaultScoringMatrix } from '../mock/scoringMatrix';
 import { getOrCreateSubmission } from './submissions';
 
 const STATUS_MAP = {
@@ -15,8 +13,7 @@ const STATUS_MAP = {
   revision: ACHIEVEMENT_STATUS.REVISION,
 };
 
-export function normalizeAchievement(raw, directions, matrix) {
-  const direction = directions.find((d) => d.id === raw.directionId);
+export function normalizeAchievement(raw) {
   const achievement = {
     id: raw.id,
     submissionId: raw.submissionId,
@@ -32,9 +29,7 @@ export function normalizeAchievement(raw, directions, matrix) {
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt || new Date().toISOString(),
   };
-  const score =
-    raw.score ??
-    calculateAchievementScore(achievement, direction, matrix);
+  const score = raw.score ?? 0;
   return {
     ...achievement,
     score,
@@ -64,7 +59,7 @@ function buildSubmissionsFromAchievements(achievements, existingSubmissions) {
   return submissions;
 }
 
-export function hydrateAchievements(raw, directions, matrix, submissionsSeed) {
+export function hydrateAchievements(raw, _directions, _matrix, submissionsSeed) {
   const stored = raw.achievements ?? raw.applications;
   if (!stored?.length) {
     return {
@@ -75,7 +70,7 @@ export function hydrateAchievements(raw, directions, matrix, submissionsSeed) {
 
   let achievements;
   if (stored[0]?.slotIndex != null && stored[0]?.directionId) {
-    achievements = stored.map((a) => normalizeAchievement(a, directions, matrix));
+    achievements = stored.map((a) => normalizeAchievement(a));
   } else {
     const byUserDir = {};
     achievements = stored.map((app) => {
@@ -90,9 +85,7 @@ export function hydrateAchievements(raw, directions, matrix, submissionsSeed) {
           status: STATUS_MAP[app.status] || app.status,
           finalScore: app.status === 'approved' ? app.score : null,
           revision: app.revision || null,
-        },
-        directions,
-        matrix
+        }
       );
     });
   }

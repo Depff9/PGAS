@@ -28,6 +28,15 @@ export function migrateUser(user, faculties) {
     ...user,
     facultyId: user.role === ROLES.STUDENT ? facultyId : null,
     group: user.role === ROLES.STUDENT ? group : null,
+    permissions:
+      user.role === ROLES.COMMISSION
+        ? {
+            canEditRegulations: user.permissions?.canEditRegulations ?? false,
+            canEditDirections: user.permissions?.canEditDirections ?? false,
+            canEditScoringMatrix: user.permissions?.canEditScoringMatrix ?? false,
+            allowedDirectionIds: user.permissions?.allowedDirectionIds ?? [],
+          }
+        : null,
     recordBookNumber:
       user.role === ROLES.STUDENT
         ? user.recordBookNumber ?? user.studentId ?? ''

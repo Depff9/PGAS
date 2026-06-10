@@ -4,6 +4,23 @@ import { adminSidebar } from '../config/navigation';
 import { TOOLTIP_FIELD_KEYS } from '../config/tooltipFields';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setTooltips } from '../store/dataSlice';
+import TooltipInfo from '../components/TooltipInfo';
+
+function PreviewField({ fieldKey }) {
+  const fallback = TOOLTIP_FIELD_KEYS.find((k) => k.value === fieldKey)?.label || 'Элемент интерфейса';
+  return (
+    <div className="tooltip-live-preview__field">
+      <label className="tooltip-live-preview__label">
+        {fallback} <TooltipInfo fieldKey={fieldKey} />
+      </label>
+      <div className="tooltip-live-preview__input" />
+    </div>
+  );
+}
+
+function getFieldLabel(fieldKey) {
+  return TOOLTIP_FIELD_KEYS.find((k) => k.value === fieldKey)?.label || fieldKey;
+}
 
 export default function Tooltips() {
   const dispatch = useAppDispatch();
@@ -13,6 +30,7 @@ export default function Tooltips() {
     label: '',
     text: '',
   });
+  const [previewMode, setPreviewMode] = useState(false);
 
   const add = (e) => {
     e.preventDefault();
@@ -89,6 +107,28 @@ export default function Tooltips() {
               rows={3}
             />
           </div>
+          <label style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <input
+              type="checkbox"
+              checked={previewMode}
+              onChange={(e) => setPreviewMode(e.target.checked)}
+            />
+            Предпросмотр
+          </label>
+          {previewMode && (
+            <div className="card tooltip-live-preview">
+              <p style={{ marginTop: 0 }}>
+                <strong>Где используется:</strong>{' '}
+                {TOOLTIP_FIELD_KEYS.find((k) => k.value === form.fieldKey)?.label || form.fieldKey}
+              </p>
+              <div className="tooltip-live-preview__canvas">
+                <PreviewField fieldKey={form.fieldKey} />
+              </div>
+              <p className="form-hint" style={{ marginTop: '0.5rem' }}>
+                Живой предпросмотр рендерит подсказку на визуальном элементе интерфейса.
+              </p>
+            </div>
+          )}
           <button type="submit" className="btn btn--primary">
             Сохранить подсказку
           </button>
@@ -99,7 +139,7 @@ export default function Tooltips() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Ключ</th>
+              <th>Элемент</th>
               <th>Заголовок</th>
               <th>Текст</th>
               <th></th>
@@ -109,7 +149,10 @@ export default function Tooltips() {
             {tooltips.map((t) => (
               <tr key={t.id}>
                 <td>
-                  <code>{t.fieldKey}</code>
+                  <div>{getFieldLabel(t.fieldKey)}</div>
+                  <small className="form-hint">
+                    <code>{t.fieldKey}</code>
+                  </small>
                 </td>
                 <td>{t.label}</td>
                 <td>{t.text}</td>

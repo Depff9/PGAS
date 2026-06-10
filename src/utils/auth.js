@@ -12,7 +12,8 @@ export function authenticate(dispatch, users, email, password, faculties = []) {
     dispatch(loginFailure('Неверный email или пароль'));
     return false;
   }
-  const { password: _, ...safeUser } = migrateUser(found, faculties);
+  const safeUser = { ...migrateUser(found, faculties) };
+  delete safeUser.password;
   dispatch(loginSuccess(safeUser));
   return true;
 }
@@ -40,7 +41,8 @@ export function registerUser(dispatch, users, form, faculties = []) {
   );
   const updated = [...users, newUser];
   dispatch(setUsers(updated));
-  const { password: __, ...safeUser } = newUser;
+  const safeUser = { ...newUser };
+  delete safeUser.password;
   dispatch(loginSuccess(safeUser));
   return { ok: true };
 }

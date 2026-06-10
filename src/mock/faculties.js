@@ -20,6 +20,11 @@ export const initialFaculties = [
     shortName: 'ФЭиС',
     name: 'Факультет Экономики и Строительства',
   },
+  {
+    id: 'f-fmp',
+    shortName: 'ФМП',
+    name: 'Факультет Магистерской Подготовки',
+  },
 ];
 
 export function getFacultyLabel(faculty) {

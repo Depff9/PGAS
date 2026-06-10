@@ -5,6 +5,7 @@ export const NOTIFICATION_TYPES = {
   REJECTED: 'rejected',
   REVISION: 'revision',
   DEADLINE: 'deadline',
+  INFO: 'info',
 };
 
 /** Уведомляем только о важных событиях — не о «на рассмотрении» */
@@ -65,6 +66,19 @@ export function buildDeadlineNotification(userId, message) {
     read: false,
     createdAt: new Date().toISOString(),
     link: '/application/workspace',
+  };
+}
+
+export function buildRegulationsUpdatedNotification(userId, message) {
+  return {
+    id: 'n' + Date.now() + Math.random().toString(36).slice(2, 6),
+    userId,
+    type: NOTIFICATION_TYPES.INFO,
+    title: 'Обновления в системе ПГАС',
+    body: message,
+    read: false,
+    createdAt: new Date().toISOString(),
+    link: '/regulations',
   };
 }
 

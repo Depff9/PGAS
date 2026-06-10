@@ -1,6 +1,6 @@
 /** Уровни значимости достижения для автоматической оценки */
 export const ACHIEVEMENT_LEVELS = [
-  { id: 'faculty', label: 'Внутривузовский (факультет / вуз)', points: 15 },
+  { id: 'faculty', label: 'Внутривузовский', points: 15 },
   { id: 'regional', label: 'Региональный', points: 30 },
   { id: 'federal', label: 'Всероссийский', points: 50 },
   { id: 'international', label: 'Международный', points: 70 },
@@ -8,19 +8,11 @@ export const ACHIEVEMENT_LEVELS = [
 
 /**
  * Автоматический расчёт баллов за достижение.
- * Учитываются уровень мероприятия, полнота описания и потолок по направлению.
+ * Учитывается только уровень мероприятия.
  */
-export function calculateApplicationScore({ achievementLevel, description }, direction) {
+export function calculateApplicationScore({ achievementLevel }) {
   const level = ACHIEVEMENT_LEVELS.find((l) => l.id === achievementLevel) || ACHIEVEMENT_LEVELS[0];
-  const max = direction?.maxScore ?? 100;
-  let score = level.points;
-
-  const len = (description || '').trim().length;
-  if (len >= 150) score += 3;
-  if (len >= 300) score += 5;
-  if (len >= 500) score += 7;
-
-  return Math.min(Math.round(score), max);
+  return Math.round(level.points);
 }
 
 export function getLevelLabel(levelId) {

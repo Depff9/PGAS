@@ -20,8 +20,20 @@ export const initialTooltips = [
   },
   {
     id: 't4',
-    fieldKey: 'register.faculty',
-    label: 'Факультет',
-    text: 'Выберите факультет (институт), на котором вы обучаетесь.',
+    fieldKey: 'register.email',
+    label: 'Email',
+    text: 'Используйте рабочий email в формате name@domain.ru.',
+  },
+  {
+    id: 't5',
+    fieldKey: 'login.email',
+    label: 'Email для входа',
+    text: 'Введите email, который вы указали при регистрации.',
+  },
+  {
+    id: 't6',
+    fieldKey: 'login.password',
+    label: 'Пароль для входа',
+    text: 'Введите пароль от учётной записи.',
   },
 ];

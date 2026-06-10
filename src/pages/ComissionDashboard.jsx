@@ -8,13 +8,14 @@ export default function ComissionDashboard() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const directions = useAppSelector((s) => s.data.directions);
   const regulations = useAppSelector((s) => s.data.regulations);
+  const user = useAppSelector((s) => s.auth.user);
 
   const pending = achievements.filter(
     (a) => a.status === ACHIEVEMENT_STATUS.SUBMITTED
   ).length;
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Кабинет комиссии</h1>
         <p>Регламент, направления, рассмотрение достижений и экспорт ведомости</p>
@@ -28,25 +29,37 @@ export default function ComissionDashboard() {
           title="На проверке"
           subtitle={`Всего записей: ${achievements.length}`}
         />
-        <DashboardCard
-          to="/commission/regulations"
-          icon="📜"
-          value={regulations.sections?.length || 0}
-          title="Регламент"
-          subtitle="Правила подачи"
-        />
-        <DashboardCard
-          to="/commission/directions"
-          icon="🎯"
-          value={directions.length}
-          title="Направления"
-          subtitle="5 направлений ПГАС"
-        />
+        {user?.permissions?.canEditRegulations && (
+          <DashboardCard
+            to="/commission/regulations"
+            icon="📜"
+            value={regulations.sections?.length || 0}
+            title="Регламент"
+            subtitle="Правила подачи"
+          />
+        )}
+        {user?.permissions?.canEditDirections && (
+          <DashboardCard
+            to="/commission/directions"
+            icon="🎯"
+            value={directions.length}
+            title="Направления"
+            subtitle="5 направлений ПГАС"
+          />
+        )}
+        {user?.permissions?.canEditScoringMatrix && (
+          <DashboardCard
+            to="/commission/scoring"
+            icon="🗂️"
+            title="Уровни достижений"
+            subtitle="Справочник уровней"
+          />
+        )}
         <DashboardCard
           to="/commission/export"
           icon="📥"
           title="Экспорт"
-          subtitle="Excel / PDF"
+          subtitle="Excel / PDF / Word"
         />
       </div>
     </DashboardLayout>

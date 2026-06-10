@@ -1,4 +1,13 @@
-export function createHistoryEntry({ category, action, summary, userId, userName, snapshot }) {
+export function createHistoryEntry({
+  category,
+  action,
+  summary,
+  userId,
+  userName,
+  snapshot,
+  targetId = null,
+  metadata = null,
+}) {
   return {
     id: 'h' + Date.now(),
     category,
@@ -7,6 +16,8 @@ export function createHistoryEntry({ category, action, summary, userId, userName
     userId,
     userName,
     snapshot,
+    targetId,
+    metadata,
     createdAt: new Date().toISOString(),
   };
 }

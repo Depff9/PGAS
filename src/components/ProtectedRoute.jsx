@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
 
-export default function ProtectedRoute({ children, roles }) {
+export default function ProtectedRoute({ children, roles, commissionPermission }) {
   const user = useAppSelector((s) => s.auth.user);
   const location = useLocation();
 
@@ -18,6 +18,12 @@ export default function ProtectedRoute({ children, roles }) {
           ? '/commission'
           : '/profile';
     return <Navigate to={fallback} replace />;
+  }
+
+  if (user.role === ROLES.COMMISSION && commissionPermission) {
+    if (!user.permissions?.[commissionPermission]) {
+      return <Navigate to="/commission" replace />;
+    }
   }
 
   return children;

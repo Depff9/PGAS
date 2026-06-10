@@ -3,17 +3,15 @@ import DashboardCard from '../components/DashboardCard';
 import { adminSidebar } from '../config/navigation';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
-import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 
 export default function AdminDashboard() {
   const users = useAppSelector((s) => s.data.users);
-  const achievements = useAppSelector((s) => s.data.achievements);
-  const submissions = useAppSelector((s) => s.data.submissions);
+  const faculties = useAppSelector((s) => s.data.faculties);
+  const groups = useAppSelector((s) => s.data.groups);
+  const commission = users.filter((u) => u.role === ROLES.COMMISSION).length;
   const tooltips = useAppSelector((s) => s.data.tooltips);
 
   const students = users.filter((u) => u.role === ROLES.STUDENT).length;
-  const submittedSubs = submissions.filter((s) => s.status !== 'draft').length;
-  const approvedAch = achievements.filter((a) => a.status === ACHIEVEMENT_STATUS.APPROVED).length;
 
   return (
     <DashboardLayout sidebarItems={adminSidebar} sidebarTitle="Администрирование">
@@ -31,16 +29,18 @@ export default function AdminDashboard() {
           subtitle={`из них ${students} студентов`}
         />
         <DashboardCard
-          icon="📋"
-          value={submittedSubs}
-          title="Подано заявлений"
-          subtitle={`всего заявлений: ${submissions.length}`}
+          to="/admin/faculties"
+          icon="🏛"
+          value={faculties.length}
+          title="Факультетов"
+          subtitle="в справочнике системы"
         />
         <DashboardCard
-          icon="✅"
-          value={approvedAch}
-          title="Одобрено достижений"
-          subtitle="в рамках заявлений"
+          to="/admin/groups"
+          icon="📚"
+          value={groups.length}
+          title="Учебных групп"
+          subtitle="актуальные группы по факультетам"
         />
         <DashboardCard
           to="/admin/tooltips"
@@ -48,6 +48,13 @@ export default function AdminDashboard() {
           value={tooltips.length}
           title="Подсказки"
           subtitle="Тултипы интерфейса"
+        />
+        <DashboardCard
+          to="/admin/users"
+          icon="🧑‍⚖️"
+          value={commission}
+          title="Членов комиссии"
+          subtitle="права и зоны оценки"
         />
       </div>
     </DashboardLayout>

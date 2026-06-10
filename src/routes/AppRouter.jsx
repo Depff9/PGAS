@@ -106,7 +106,10 @@ export default function AppRouter() {
       <Route
         path="/commission/regulations"
         element={
-          <ProtectedRoute roles={[ROLES.COMMISSION]}>
+          <ProtectedRoute
+            roles={[ROLES.COMMISSION]}
+            commissionPermission="canEditRegulations"
+          >
             <Regulations />
           </ProtectedRoute>
         }
@@ -114,7 +117,10 @@ export default function AppRouter() {
       <Route
         path="/commission/directions"
         element={
-          <ProtectedRoute roles={[ROLES.COMMISSION]}>
+          <ProtectedRoute
+            roles={[ROLES.COMMISSION]}
+            commissionPermission="canEditDirections"
+          >
             <AdminDirections />
           </ProtectedRoute>
         }
@@ -122,7 +128,10 @@ export default function AppRouter() {
       <Route
         path="/commission/scoring"
         element={
-          <ProtectedRoute roles={[ROLES.COMMISSION]}>
+          <ProtectedRoute
+            roles={[ROLES.COMMISSION]}
+            commissionPermission="canEditScoringMatrix"
+          >
             <ScoringMatrix />
           </ProtectedRoute>
         }

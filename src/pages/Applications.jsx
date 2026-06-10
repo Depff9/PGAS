@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSubmissions, setAchievements } from '../store/dataSlice';
 import {
   SUBMISSION_STATUS_LABELS,
-  CURRENT_ACADEMIC_YEAR,
+  CURRENT_SEMESTER_LABEL,
 } from '../constants/submissions';
 import { ACHIEVEMENT_STATUS_LABELS } from '../constants/achievements';
 import {
@@ -74,7 +74,7 @@ export default function Applications() {
         <header className="page-header">
           <h1>Моё заявление на ПГАС</h1>
           <p>
-            Одно заявление на повышенную стипендию за {CURRENT_ACADEMIC_YEAR} уч. год.
+            Одно заявление на повышенную стипендию за {CURRENT_SEMESTER_LABEL}.
             Внутри — достижения по направлениям.
           </p>
         </header>
@@ -83,7 +83,7 @@ export default function Applications() {
           <div className="submission-card__head">
             <div>
               <h2 style={{ margin: 0 }}>Заявление на ПГАС</h2>
-              <p className="form-hint">Учебный год: {CURRENT_ACADEMIC_YEAR}</p>
+              <p className="form-hint">Семестр: {CURRENT_SEMESTER_LABEL}</p>
             </div>
             <span className={`badge badge--${submission?.status || 'draft'}`}>
               {SUBMISSION_STATUS_LABELS[submission?.status] || 'Черновик'}

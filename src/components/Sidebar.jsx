@@ -1,11 +1,30 @@
 import { NavLink } from 'react-router-dom';
+import { useAppSelector } from '../store/hooks';
+import { ROLES } from '../mock/users';
 
 export default function Sidebar({ items, title }) {
+  const user = useAppSelector((s) => s.auth.user);
+  const filteredItems =
+    user?.role === ROLES.COMMISSION
+      ? items.filter((item) => {
+          if (item.to === '/commission/regulations') {
+            return user.permissions?.canEditRegulations;
+          }
+          if (item.to === '/commission/directions') {
+            return user.permissions?.canEditDirections;
+          }
+          if (item.to === '/commission/scoring') {
+            return user.permissions?.canEditScoringMatrix;
+          }
+          return true;
+        })
+      : items;
+
   return (
     <aside className="sidebar">
       {title && <h2 className="sidebar__title">{title}</h2>}
       <nav className="sidebar__nav">
-        {items.map((item) => (
+        {filteredItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

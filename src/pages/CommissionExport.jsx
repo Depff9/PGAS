@@ -1,7 +1,8 @@
 import DashboardLayout from '../layouts/DashboardLayout';
 import { commissionSidebar } from '../config/navigation';
 import { useAppSelector } from '../store/hooks';
-import { buildExportRows, downloadXlsx, printPdfReport } from '../utils/exportReport';
+import { useMemo, useState } from 'react';
+import { buildExportRows, downloadDoc, downloadXlsx, printPdfReport } from '../utils/exportReport';
 
 export default function CommissionExport() {
   const submissions = useAppSelector((s) => s.data.submissions);
@@ -11,24 +12,70 @@ export default function CommissionExport() {
   const faculties = useAppSelector((s) => s.data.faculties);
 
   const rows = buildExportRows(submissions, achievements, users, directions, faculties);
+  const columnDefs = [
+    { id: 'student', label: 'Студент' },
+    { id: 'group', label: 'Группа' },
+    { id: 'faculty', label: 'Факультет' },
+    { id: 'submissionStatus', label: 'Статус заявления' },
+    { id: 'totalScore', label: 'Сумма баллов' },
+    { id: 'direction', label: 'Направление' },
+    { id: 'slot', label: '№ достижения' },
+    { id: 'title', label: 'Достижение' },
+    { id: 'achievementStatus', label: 'Статус достижения' },
+    { id: 'score', label: 'Баллы комиссии' },
+    { id: 'level', label: 'Уровень достижения' },
+  ];
+  const [enabledColumns, setEnabledColumns] = useState(
+    columnDefs.map((c) => c.id)
+  );
+
+  const filteredRows = useMemo(
+    () => rows,
+    [rows]
+  );
+  const selectedColumns = columnDefs.filter((c) => enabledColumns.includes(c.id));
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Экспорт ведомости</h1>
         <p>Выгрузка заявлений на ПГАС для комиссии и профкома</p>
       </header>
 
       <div className="card">
+        <h3 style={{ marginTop: 0 }}>Редактор таблицы экспорта</h3>
+        <div className="template-chips" style={{ marginBottom: '1rem' }}>
+          {columnDefs.map((col) => {
+            const selected = enabledColumns.includes(col.id);
+            return (
+              <button
+                key={col.id}
+                type="button"
+                className={'direction-tab' + (selected ? ' direction-tab--active' : '')}
+                onClick={() =>
+                  setEnabledColumns((prev) =>
+                    selected ? prev.filter((id) => id !== col.id) : [...prev, col.id]
+                  )
+                }
+              >
+                {col.label}
+              </button>
+            );
+          })}
+        </div>
         <p>
-          Строк в ведомости: <strong>{rows.length}</strong> (достижения внутри заявлений)
+          Строк в ведомости: <strong>{filteredRows.length}</strong> (достижения внутри заявлений)
         </p>
         <div className="form-actions">
           <button
             type="button"
             className="btn btn--primary"
             onClick={() =>
-              downloadXlsx(`pgas-vedomost-${new Date().toISOString().slice(0, 10)}.xlsx`, rows)
+              downloadXlsx(
+                `pgas-vedomost-${new Date().toISOString().slice(0, 10)}.xlsx`,
+                filteredRows,
+                selectedColumns
+              )
             }
           >
             Скачать Excel (.xlsx)
@@ -36,13 +83,26 @@ export default function CommissionExport() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => printPdfReport(rows)}
+            onClick={() => printPdfReport(filteredRows, selectedColumns)}
           >
             PDF (печать)
           </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() =>
+              downloadDoc(
+                `pgas-vedomost-${new Date().toISOString().slice(0, 10)}.docx`,
+                filteredRows,
+                selectedColumns
+              )
+            }
+          >
+            Word (.docx)
+          </button>
         </div>
         <p className="form-hint">
-          Файл Excel в формате .xlsx. PDF — через диалог печати браузера («Сохранить как PDF»).
+          Excel (.xlsx), PDF через печать браузера и Word-документ для дальнейшего редактирования.
         </p>
       </div>
     </DashboardLayout>

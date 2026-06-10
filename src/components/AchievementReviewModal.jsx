@@ -2,18 +2,16 @@ import { useState } from 'react';
 import { formatFullName } from '../mock/users';
 import { ACHIEVEMENT_STATUS, ACHIEVEMENT_FIELDS } from '../constants/achievements';
 import { revisionTemplates } from '../mock/revisionTemplates';
-import { calculateAchievementScore, getEffectiveScore } from '../utils/scoring';
 
 export default function AchievementReviewModal({
   achievement,
   student,
   direction,
-  scoringMatrix,
   onClose,
   onSave,
 }) {
   const [finalScore, setFinalScore] = useState(
-    achievement.finalScore ?? achievement.score ?? 0
+    achievement.finalScore ?? 0
   );
   const [revisionItems, setRevisionItems] = useState(
     achievement.revision?.items?.length
@@ -23,12 +21,6 @@ export default function AchievementReviewModal({
   const [generalComment, setGeneralComment] = useState(
     achievement.revision?.generalComment || ''
   );
-
-  const recalc = () => {
-    setFinalScore(
-      calculateAchievementScore(achievement, direction, scoringMatrix)
-    );
-  };
 
   const applyTemplate = (tpl) => {
     const existing = revisionItems.find((i) => i.field === tpl.field);
@@ -60,8 +52,8 @@ export default function AchievementReviewModal({
       finalScore:
         status === ACHIEVEMENT_STATUS.APPROVED
           ? Number(finalScore)
-          : achievement.finalScore,
-      score: achievement.score ?? calculateAchievementScore(achievement, direction, scoringMatrix),
+          : achievement.finalScore ?? 0,
+      score: 0,
       revision,
       updatedAt: new Date().toISOString(),
       ...extra,
@@ -108,26 +100,13 @@ export default function AchievementReviewModal({
 
         <div className="form-row form-row--2">
           <div className="form-group">
-            <label>Автооценка</label>
-            <p>
-              <strong>{achievement.score}</strong> баллов
-              <button type="button" className="btn btn--ghost btn--sm" onClick={recalc}>
-                Пересчитать
-              </button>
-            </p>
-          </div>
-          <div className="form-group">
             <label>Итоговые баллы (комиссия)</label>
             <input
               type="number"
               min={0}
-              max={direction?.maxScore ?? 100}
               value={finalScore}
               onChange={(e) => setFinalScore(e.target.value)}
             />
-            <p className="form-hint">
-              Сейчас в зачёте: {getEffectiveScore({ ...achievement, finalScore })}
-            </p>
           </div>
         </div>
 

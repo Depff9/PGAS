@@ -16,10 +16,10 @@ export default function AdminDirections() {
   };
 
   return (
-    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Комиссия">
+    <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Направления ПГАС</h1>
-        <p>Настройка пяти направлений подачи заявлений и максимальных баллов</p>
+        <p>Настройка пяти направлений подачи заявлений</p>
       </header>
 
       {directions.map((d, index) => (
@@ -34,22 +34,12 @@ export default function AdminDirections() {
               onChange={(e) => update(d.id, 'title', e.target.value)}
             />
           </div>
-          <div className="form-row form-row--2">
-            <div className="form-group">
-              <label>Краткое название</label>
-              <input
-                value={d.shortTitle}
-                onChange={(e) => update(d.id, 'shortTitle', e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Макс. балл</label>
-              <input
-                type="number"
-                value={d.maxScore}
-                onChange={(e) => update(d.id, 'maxScore', Number(e.target.value))}
-              />
-            </div>
+          <div className="form-group">
+            <label>Краткое название</label>
+            <input
+              value={d.shortTitle}
+              onChange={(e) => update(d.id, 'shortTitle', e.target.value)}
+            />
           </div>
           <div className="form-group">
             <label>Описание</label>

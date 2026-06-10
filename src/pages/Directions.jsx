@@ -31,7 +31,9 @@ export default function Directions() {
               </h3>
               <p>{d.description}</p>
               <div className="direction-card__meta">
-                {d.active ? `Макс. балл: ${d.maxScore}` : 'Направление временно закрыто'}
+                {d.active
+                  ? 'При оценке учитываются подтвержденные достижения'
+                  : 'Направление временно закрыто'}
               </div>
             </article>
           ))}

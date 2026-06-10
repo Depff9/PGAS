@@ -6,7 +6,6 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setAchievements, setSubmissions } from '../store/dataSlice';
 import { ACHIEVEMENT_STATUS, ACHIEVEMENT_STATUS_LABELS } from '../constants/achievements';
 import { getAchievementAt, upsertAchievement, removeAchievement } from '../utils/achievements';
-import { calculateAchievementScore } from '../utils/scoring';
 import { UNIVERSITY } from '../config/university';
 import {
   getOrCreateSubmission,
@@ -28,7 +27,6 @@ export default function ApplicationWorkspace() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const submissions = useAppSelector((s) => s.data.submissions);
   const directions = useAppSelector((s) => s.data.directions).filter((d) => d.active);
-  const scoringMatrix = useAppSelector((s) => s.data.scoringMatrix);
   const regulations = useAppSelector((s) => s.data.regulations);
 
   const [modal, setModal] = useState(null);
@@ -104,13 +102,12 @@ export default function ApplicationWorkspace() {
 
   const handleSave = (item) => {
     const sub = ensureSubmission();
-    const direction = directions.find((d) => d.id === item.directionId);
     const withScore = {
       ...item,
       submissionId: sub.id,
       userId: user.id,
       id: item.id || 'ach' + Date.now(),
-      score: calculateAchievementScore(item, direction, scoringMatrix),
+      score: 0,
     };
     const next = upsertAchievement(myAchievements, withScore);
     persist(next, sub);
@@ -133,7 +130,7 @@ export default function ApplicationWorkspace() {
         <header className="page-header">
           <h1>Таблица достижений</h1>
           <p>
-            Заявление на ПГАС · {CURRENT_ACADEMIC_YEAR}. Лимиты по направлениям — в{' '}
+            Заявление на ПГАС · {CURRENT_ACADEMIC_YEAR} семестр. Лимиты по направлениям — в{' '}
             <Link to="/regulations">регламенте</Link>.
           </p>
         </header>
@@ -205,7 +202,6 @@ export default function ApplicationWorkspace() {
         <AchievementEditModal
           achievement={modal.achievement}
           direction={modal.direction}
-          scoringMatrix={scoringMatrix}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={modal.achievement.id ? handleDelete : null}

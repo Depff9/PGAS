@@ -1,14 +1,23 @@
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import TooltipInfo from '../components/TooltipInfo';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
 import { UNIVERSITY } from '../config/university';
 
+function getDeadlineLabel(regulations) {
+  const deadlineSection = regulations.sections?.find((s) => s.id === 'r2');
+  const content = deadlineSection?.content || '';
+  const explicit = content.match(/по\s+(\d{1,2}\s+\S+)/i)?.[1];
+  if (explicit) return explicit;
+
+  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
+  return allDates.at(-1) || '30 ноября';
+}
+
 export default function Home() {
   const user = useAppSelector((s) => s.auth.user);
-  const directions = useAppSelector((s) => s.data.directions).filter((d) => d.active);
   const regulations = useAppSelector((s) => s.data.regulations);
-  const deadlineSection = regulations.sections?.find((s) => s.id === 'r2');
 
   const ctaTo =
     user?.role === ROLES.ADMIN
@@ -19,8 +28,7 @@ export default function Home() {
           ? '/application/workspace'
           : '/register';
 
-  const deadlineText =
-    deadlineSection?.content?.match(/\d{1,2}\s+\w+/)?.[0] || '30 ноября';
+  const deadlineText = getDeadlineLabel(regulations);
 
   return (
     <div className="app-shell">
@@ -31,6 +39,7 @@ export default function Home() {
             <p className="hero__org">{UNIVERSITY.officialName}</p>
             <h1>
               Подача заявлений на повышенную государственную академическую стипендию
+              <TooltipInfo fieldKey="home.heroTitle" />
             </h1>
             <p>
               Электронный сервис {UNIVERSITY.shortName} для учёта достижений, подачи заявлений
@@ -38,11 +47,13 @@ export default function Home() {
             </p>
             <div className="hero__actions">
               <Link to={ctaTo} className="btn btn--primary">
+                <TooltipInfo fieldKey="home.goToSystem" />
                 {user ? 'Перейти в систему' : 'Зарегистрироваться'}
               </Link>
-              <a href="#directions" className="btn btn--ghost">
+              <Link to="/directions" className="btn btn--ghost">
+                <TooltipInfo fieldKey="home.goToDirections" />
                 Направления ПГАС
-              </a>
+              </Link>
             </div>
           </div>
           <div className="hero__card">
@@ -54,15 +65,16 @@ export default function Home() {
               </div>
               <div className="hero__stat">
                 <strong>до {deadlineText}</strong>
+                <TooltipInfo fieldKey="home.deadline" />
                 <span>срок подачи в этом году</span>
               </div>
               <div className="hero__stat">
-                <strong>100+</strong>
-                <span>символов в описании достижения</span>
+                <strong>1</strong>
+                <span>заявление на студента за семестр</span>
               </div>
               <div className="hero__stat">
-                <strong>баллы</strong>
-                <span>суммируются в рейтинг факультета</span>
+                <strong>статусы</strong>
+                <span>решения комиссии видны в личном кабинете</span>
               </div>
             </div>
           </div>
@@ -83,7 +95,7 @@ export default function Home() {
           </li>
           <li>
             <strong>Выберите направление</strong> — учебная, научная, общественная,
-            культурно-массовая или спортивная деятельность.
+            культурно-творческая или спортивная деятельность.
           </li>
           <li>
             <strong>Заполните одно заявление</strong> — внутри таблица достижений по
@@ -94,21 +106,6 @@ export default function Home() {
             <Link to="/rating">рейтинге</Link> факультета.
           </li>
         </ol>
-
-        <div id="directions" className="direction-grid" style={{ marginTop: '2.5rem' }}>
-          <h2 style={{ gridColumn: '1 / -1', margin: 0 }}>Направления ПГАС</h2>
-          {(directions.length ? directions : [{ title: 'Загрузка…', description: '' }]).map(
-            (d) => (
-              <div key={d.id || d.title} className="direction-card">
-                <h3>{d.title}</h3>
-                <p>{d.description}</p>
-                {d.maxScore != null && (
-                  <div className="direction-card__meta">Макс. балл: {d.maxScore}</div>
-                )}
-              </div>
-            )
-          )}
-        </div>
 
         <footer className="site-footer">
           <p>{UNIVERSITY.officialName}</p>

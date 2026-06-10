@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import TooltipInfo from '../components/TooltipInfo';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { registerUser } from '../utils/auth';
 import { UNIVERSITY } from '../config/university';
@@ -59,25 +60,35 @@ export default function Register() {
           <form onSubmit={handleSubmit}>
             <div className="form-row form-row--3">
               <div className="form-group">
-                <label>Фамилия</label>
+                <label>
+                  Фамилия <TooltipInfo fieldKey="register.lastName" />
+                </label>
                 <input value={form.lastName} onChange={set('lastName')} required />
               </div>
               <div className="form-group">
-                <label>Имя</label>
+                <label>
+                  Имя <TooltipInfo fieldKey="register.firstName" />
+                </label>
                 <input value={form.firstName} onChange={set('firstName')} required />
               </div>
               <div className="form-group">
-                <label>Отчество</label>
+                <label>
+                  Отчество <TooltipInfo fieldKey="register.middleName" />
+                </label>
                 <input value={form.middleName} onChange={set('middleName')} />
               </div>
             </div>
             <div className="form-group">
-              <label>Email</label>
+              <label>
+                Email <TooltipInfo fieldKey="register.email" />
+              </label>
               <input type="email" value={form.email} onChange={set('email')} required />
             </div>
             <div className="form-row form-row--2">
               <div className="form-group">
-                <label>Пароль</label>
+                <label>
+                  Пароль <TooltipInfo fieldKey="register.password" />
+                </label>
                 <input type="password" value={form.password} onChange={set('password')} required />
               </div>
               <div className="form-group">

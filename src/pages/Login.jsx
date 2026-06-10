@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import TooltipInfo from '../components/TooltipInfo';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { authenticate } from '../utils/auth';
 import { clearError } from '../store/authSlice';
@@ -46,7 +47,9 @@ export default function Login() {
           {error && <div className="alert alert--error">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">
+                Email <TooltipInfo fieldKey="login.email" />
+              </label>
               <input
                 id="email"
                 type="email"
@@ -57,7 +60,9 @@ export default function Login() {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Пароль</label>
+              <label htmlFor="password">
+                Пароль <TooltipInfo fieldKey="login.password" />
+              </label>
               <input
                 id="password"
                 type="password"
