@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  commission
+  admin
+}
+
+enum SubmissionStatus {
+  draft
+  submitted
+  revision
+  approved
+  rejected
+}
+
+enum AchievementStatus {
+  draft
+  submitted
+  approved
+  rejected
+  revision
+}
+
+model User {
+  id                String        @id
+  email             String        @unique
+  passwordHash      String
+  role              Role
+  lastName          String
+  firstName         String
+  middleName        String?
+  facultyId         String?
+  group             String?
+  recordBookNumber  String?
+  studentCardNumber String?
+  permissions       Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  faculty           Faculty?      @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  submissions       Submission[]
+  achievements      Achievement[]
+  notifications     Notification[]
+  regulationsEdited Regulation[]  @relation("RegulationUpdatedBy")
+  historyEntries    HistoryEntry[] @relation("HistoryCreatedBy")
+}
+
+model Faculty {
+  id        String   @id
+  shortName String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  groups    Group[]
+}
+
+model Group {
+  id        String   @id
+  name      String
+  facultyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Restrict)
+}
+
+model Direction {
+  id          String        @id
+  title       String
+  shortTitle  String
+  description String
+  icon        String?
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  achievements Achievement[]
+}
+
+model Submission {
+  id           String           @id
+  userId       String
+  academicYear String
+  status       SubmissionStatus
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievements Achievement[]
+}
+
+model Achievement {
+  id               String            @id
+  submissionId     String
+  userId           String
+  directionId      String
+  slotIndex        Int
+  title            String
+  description      String
+  attachments      Json              @default("[]")
+  achievementLevel String?
+  status           AchievementStatus
+  score            Int?
+  finalScore       Int?
+  revision         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  submission       Submission        @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  direction        Direction         @relation(fields: [directionId], references: [id], onDelete: Restrict)
+  notifications    Notification[]
+}
+
+model Regulation {
+  id                     Int      @id @default(1)
+  title                  String
+  updatedAt              DateTime
+  updatedBy              String?
+  defaultMaxPerDirection Int
+  directionLimits        Json
+  sections               Json
+  createdAt              DateTime @default(now())
+
+  updatedByUser          User?    @relation("RegulationUpdatedBy", fields: [updatedBy], references: [id], onDelete: SetNull)
+}
+
+model Tooltip {
+  id        String   @id
+  fieldKey  String
+  label     String
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id            String       @id
+  userId        String
+  type          String
+  achievementId String?
+  title         String
+  body          String
+  read          Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  link          String?
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement? @relation(fields: [achievementId], references: [id], onDelete: SetNull)
+}
+
+model ScoringMatrix {
+  id               Int      @id @default(1)
+  updatedAt        DateTime
+  levels           Json
+  descriptionBonuses Json
+  createdAt        DateTime @default(now())
+}
+
+model HistoryEntry {
+  id        String   @id
+  action    String
+  entity    String
+  payload   Json
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  createdByUser User? @relation("HistoryCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+}

@@ -7,6 +7,16 @@ import { formatFullName, ROLE_LABELS, ROLES } from '../mock/users';
 import { getFacultyLabel, findFaculty } from '../mock/faculties';
 import { migrateUser } from '../utils/migrateUser';
 import { createHistoryEntry } from '../utils/history';
+import { dataApi } from '../api/dataApi';
+
+function buildCommissionPermissions(permissions) {
+  return {
+    canEditRegulations: permissions?.canEditRegulations ?? false,
+    canEditDirections: permissions?.canEditDirections ?? false,
+    canEditScoringMatrix: permissions?.canEditScoringMatrix ?? false,
+    allowedDirectionIds: permissions?.allowedDirectionIds || [],
+  };
+}
 
 export default function Users() {
   const dispatch = useAppDispatch();
@@ -44,7 +54,7 @@ export default function Users() {
     });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     const editedUser = users.find((u) => u.id === editId);
     const updatedUsers = users.map((u) =>
       u.id === editId
@@ -60,7 +70,26 @@ export default function Users() {
           )
         : u
     );
+    const nextPermissions = buildCommissionPermissions(editForm.commissionPermissions);
+    const nextPayload = {
+      ...updatedUsers.find((u) => u.id === editId),
+      permissions:
+        editedUser?.role === ROLES.COMMISSION ? nextPermissions : editedUser?.permissions,
+    };
     dispatch(setUsers(updatedUsers));
+    await dataApi
+      .updateUser(editId, {
+        role: nextPayload.role,
+        firstName: nextPayload.firstName,
+        lastName: nextPayload.lastName,
+        middleName: nextPayload.middleName,
+        facultyId: nextPayload.facultyId,
+        group: nextPayload.group,
+        recordBookNumber: nextPayload.recordBookNumber,
+        studentCardNumber: nextPayload.studentCardNumber,
+        permissions: nextPayload.permissions,
+      })
+      .catch(() => null);
     dispatch(
       setHistory([
         createHistoryEntry({
@@ -79,7 +108,7 @@ export default function Users() {
     setEditForm(null);
   };
 
-  const addUser = (e) => {
+  const addUser = async (e) => {
     e.preventDefault();
     const newUser = migrateUser(
       {
@@ -103,6 +132,7 @@ export default function Users() {
       faculties
     );
     dispatch(setUsers([...users, newUser]));
+    await dataApi.createUser(newUser).catch(() => null);
     setForm({
       email: '',
       password: 'demo123',
@@ -113,12 +143,13 @@ export default function Users() {
     });
   };
 
-  const removeUser = (id) => {
+  const removeUser = async (id) => {
     if (!confirm('Удалить пользователя?')) return;
     dispatch(setUsers(users.filter((u) => u.id !== id)));
+    await dataApi.deleteUser(id).catch(() => null);
   };
 
-  const updateRole = (id, role) => {
+  const updateRole = async (id, role) => {
     dispatch(
       setUsers(
         users.map((u) =>
@@ -147,6 +178,27 @@ export default function Users() {
         )
       )
     );
+    const changed = users.find((u) => u.id === id);
+    if (changed) {
+      await dataApi
+        .updateUser(id, {
+          role,
+          permissions:
+            role === ROLES.COMMISSION
+              ? changed.permissions || {
+                  canEditRegulations: false,
+                  canEditDirections: false,
+                  canEditScoringMatrix: false,
+                  allowedDirectionIds: [],
+                }
+              : null,
+          facultyId: role === ROLES.STUDENT ? changed.facultyId : null,
+          group: role === ROLES.STUDENT ? changed.group : null,
+          recordBookNumber: role === ROLES.STUDENT ? changed.recordBookNumber : null,
+          studentCardNumber: role === ROLES.STUDENT ? changed.studentCardNumber : null,
+        })
+        .catch(() => null);
+    }
   };
 
   const facultyGroups = (facultyId) =>

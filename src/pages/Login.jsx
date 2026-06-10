@@ -3,10 +3,11 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import TooltipInfo from '../components/TooltipInfo';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { authenticate } from '../utils/auth';
-import { clearError } from '../store/authSlice';
+import { clearError, loginFailure, loginSuccess } from '../store/authSlice';
 import { ROLES } from '../mock/users';
 import { DEMO_PASSWORD } from '../mock/users';
+import { loginApi } from '../api/authApi';
+import { reloadData } from '../store/dataSlice';
 
 export default function Login() {
   const [email, setEmail] = useState('ivanov@student.brgu.ru');
@@ -15,8 +16,6 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const error = useAppSelector((s) => s.auth.error);
-  const users = useAppSelector((s) => s.data.users);
-  const faculties = useAppSelector((s) => s.data.faculties);
 
   const from = location.state?.from?.pathname;
 
@@ -27,13 +26,16 @@ export default function Login() {
     return navigate('/profile', { replace: true });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     dispatch(clearError());
-    const ok = authenticate(dispatch, users, email, password, faculties);
-    if (ok) {
-      const user = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    try {
+      const user = await loginApi(email, password);
+      dispatch(loginSuccess(user));
+      await dispatch(reloadData());
       redirectByRole(user.role);
+    } catch (error) {
+      dispatch(loginFailure(error.message || 'Ошибка входа'));
     }
   };
 

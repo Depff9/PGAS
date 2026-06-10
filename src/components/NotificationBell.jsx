@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setNotifications } from '../store/dataSlice';
 import { NOTIFICATION_TYPES } from '../utils/notifications';
+import { dataApi } from '../api/dataApi';
 
 const TYPE_ICON = {
   [NOTIFICATION_TYPES.APPROVED]: '✅',
@@ -32,7 +33,8 @@ export default function NotificationBell({ userId }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const markRead = (id) => {
+  const markRead = async (id) => {
+    await dataApi.markNotificationRead(id).catch(() => null);
     dispatch(
       setNotifications(
         all.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -40,7 +42,10 @@ export default function NotificationBell({ userId }) {
     );
   };
 
-  const markAllRead = () => {
+  const markAllRead = async () => {
+    await Promise.all(
+      mine.filter((n) => !n.read).map((n) => dataApi.markNotificationRead(n.id).catch(() => null))
+    );
     dispatch(
       setNotifications(
         all.map((n) => (n.userId === userId ? { ...n, read: true } : n))

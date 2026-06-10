@@ -7,6 +7,7 @@ import { setUsers } from '../store/dataSlice';
 import { formatFullName, ROLE_LABELS, isStudent } from '../mock/users';
 import { findFaculty, getFacultyLabel } from '../mock/faculties';
 import { UNIVERSITY } from '../config/university';
+import { dataApi } from '../api/dataApi';
 
 export default function Profile() {
   const dispatch = useAppDispatch();
@@ -29,7 +30,7 @@ export default function Profile() {
   const initials =
     (user.firstName?.[0] || '') + (user.lastName?.[0] || '');
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     const patch = {
       lastName: form.lastName.trim(),
@@ -37,6 +38,13 @@ export default function Profile() {
       middleName: form.middleName.trim(),
     };
     dispatch(updateProfile(patch));
+    await dataApi
+      .updateOwnProfile({
+        firstName: patch.firstName,
+        lastName: patch.lastName,
+        middleName: patch.middleName,
+      })
+      .catch(() => null);
     const updatedUsers = users.map((u) => (u.id === user.id ? { ...u, ...patch } : u));
     dispatch(setUsers(updatedUsers));
     setEditing(false);

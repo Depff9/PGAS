@@ -16,23 +16,27 @@ import './styles/dashboard.css';
 import './styles/forms.css';
 import './styles/tables.css';
 
-store.dispatch(reloadData());
-const boot = store.getState();
-if (boot.auth.user) {
+async function bootstrap() {
+  await store.dispatch(reloadData());
+  const boot = store.getState();
+  if (boot.auth.user) {
+    store.dispatch(
+      updateProfile(migrateUser(boot.auth.user, boot.data.faculties))
+    );
+  }
+  const after = store.getState();
   store.dispatch(
-    updateProfile(migrateUser(boot.auth.user, boot.data.faculties))
+    setNotifications(
+      ensureDeadlineNotifications(
+        after.data.users,
+        after.data.notifications,
+        after.data.regulations
+      )
+    )
   );
 }
-const after = store.getState();
-store.dispatch(
-  setNotifications(
-    ensureDeadlineNotifications(
-      after.data.users,
-      after.data.notifications,
-      after.data.regulations
-    )
-  )
-);
+
+bootstrap();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

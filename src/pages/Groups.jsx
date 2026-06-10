@@ -3,6 +3,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { adminSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setGroups } from '../store/dataSlice';
+import { dataApi } from '../api/dataApi';
 
 export default function Groups() {
   const dispatch = useAppDispatch();
@@ -11,14 +12,17 @@ export default function Groups() {
   const [name, setName] = useState('');
   const [facultyId, setFacultyId] = useState(faculties[0]?.id || '');
 
-  const add = (e) => {
+  const add = async (e) => {
     e.preventDefault();
-    dispatch(setGroups([...groups, { id: 'g' + Date.now(), name: name.trim(), facultyId }]));
+    const item = { id: 'g' + Date.now(), name: name.trim(), facultyId };
+    dispatch(setGroups([...groups, item]));
+    await dataApi.createGroup(item).catch(() => null);
     setName('');
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     dispatch(setGroups(groups.filter((g) => g.id !== id)));
+    await dataApi.deleteGroup(id).catch(() => null);
   };
 
   const facultyName = (id) => faculties.find((f) => f.id === id)?.name || '—';

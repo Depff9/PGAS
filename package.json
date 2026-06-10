@@ -8,7 +8,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "backend:install": "npm --prefix backend install",
+    "backend:dev": "npm --prefix backend run dev",
+    "backend:migrate": "npm --prefix backend run prisma:migrate",
+    "backend:seed": "npm --prefix backend run prisma:seed"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.5.0",

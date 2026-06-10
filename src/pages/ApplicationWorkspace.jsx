@@ -15,6 +15,7 @@ import {
   syncSubmissionFromAchievements,
 } from '../utils/submissions';
 import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
+import { dataApi } from '../api/dataApi';
 
 function cellClass(status) {
   if (!status) return 'matrix-cell matrix-cell--empty';
@@ -54,14 +55,17 @@ export default function ApplicationWorkspace() {
     );
   }
 
-  const ensureSubmission = () => {
+  const ensureSubmission = async () => {
     if (submissions.find((s) => s.id === submission.id)) return submission;
-    dispatch(setSubmissions([...submissions, submission]));
-    return submission;
+    const created = await dataApi
+      .createSubmission({ academicYear: CURRENT_ACADEMIC_YEAR, status: 'draft' })
+      .catch(() => submission);
+    dispatch(setSubmissions([...submissions, created]));
+    return created;
   };
 
-  const openCell = (directionId, slotIndex) => {
-    const sub = ensureSubmission();
+  const openCell = async (directionId, slotIndex) => {
+    const sub = await ensureSubmission();
     const existing = getAchievementAt(myAchievements, sub.id, directionId, slotIndex);
     const direction = directions.find((d) => d.id === directionId);
     setModal({
@@ -91,17 +95,19 @@ export default function ApplicationWorkspace() {
     const merged = [...other, ...nextAchievements];
     dispatch(setAchievements(merged));
     const synced = syncSubmissionFromAchievements(sub, merged);
+    dataApi.updateSubmissionStatus(synced.id, synced.status).catch(() => null);
+    const prevSubmissions = submissions;
     dispatch(
       setSubmissions(
-        submissions.some((s) => s.id === synced.id)
-          ? submissions.map((s) => (s.id === synced.id ? synced : s))
-          : [...submissions, synced]
+        prevSubmissions.some((s) => s.id === synced.id)
+          ? prevSubmissions.map((s) => (s.id === synced.id ? synced : s))
+          : [...prevSubmissions, synced]
       )
     );
   };
 
-  const handleSave = (item) => {
-    const sub = ensureSubmission();
+  const handleSave = async (item) => {
+    const sub = await ensureSubmission();
     const withScore = {
       ...item,
       submissionId: sub.id,
@@ -111,15 +117,21 @@ export default function ApplicationWorkspace() {
     };
     const next = upsertAchievement(myAchievements, withScore);
     persist(next, sub);
+    if (item.id) {
+      await dataApi.updateAchievement(item.id, withScore).catch(() => null);
+    } else {
+      await dataApi.createAchievement(withScore).catch(() => null);
+    }
     setModal(null);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!modal?.achievement?.id) return;
     if (!confirm('Удалить достижение?')) return;
-    const sub = ensureSubmission();
+    const sub = await ensureSubmission();
     const next = removeAchievement(myAchievements, modal.achievement.id);
     persist(next, sub);
+    await dataApi.deleteAchievement(modal.achievement.id).catch(() => null);
     setModal(null);
   };
 
@@ -162,12 +174,14 @@ export default function ApplicationWorkspace() {
                   <tbody>
                     <tr>
                       {slots.map((slot) => {
-                        const ach = getAchievementAt(
-                          myAchievements,
-                          submission.id,
-                          d.id,
-                          slot
-                        );
+                        const ach = submission
+                          ? getAchievementAt(
+                              myAchievements,
+                              submission.id,
+                              d.id,
+                              slot
+                            )
+                          : null;
                         return (
                           <td key={slot}>
                             <button

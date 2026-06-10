@@ -16,6 +16,7 @@ import {
   syncSubmissionFromAchievements,
 } from '../utils/submissions';
 import { SUBMISSION_STATUS } from '../constants/submissions';
+import { dataApi } from '../api/dataApi';
 
 export default function Applications() {
   const dispatch = useAppDispatch();
@@ -27,9 +28,6 @@ export default function Applications() {
   let submission = getStudentSubmission(submissions, user?.id);
   if (!submission && user) {
     submission = getOrCreateSubmission(submissions, user.id);
-    if (!submissions.find((s) => s.id === submission.id)) {
-      dispatch(setSubmissions([...submissions, submission]));
-    }
   }
 
   const subAch = submission
@@ -43,7 +41,7 @@ export default function Applications() {
     count: subAch.filter((a) => a.directionId === d.id && a.title).length,
   }));
 
-  const submitApplication = () => {
+  const submitApplication = async () => {
     if (filled === 0) {
       alert('Добавьте хотя бы одно достижение в таблице');
       return;
@@ -61,8 +59,16 @@ export default function Applications() {
     );
     dispatch(
       setSubmissions(
-        submissions.map((s) => (s.id === synced.id ? synced : s))
+        submissions.some((s) => s.id === synced.id)
+          ? submissions.map((s) => (s.id === synced.id ? synced : s))
+          : [...submissions, synced]
       )
+    );
+    await dataApi.updateSubmissionStatus(synced.id, 'submitted').catch(() => null);
+    await Promise.all(
+      updatedAch
+        .filter((a) => a.status === 'submitted')
+        .map((a) => dataApi.updateAchievement(a.id, { status: 'submitted' }).catch(() => null))
     );
     alert('Заявление на ПГАС подано');
   };

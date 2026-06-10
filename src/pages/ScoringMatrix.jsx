@@ -5,6 +5,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setScoringMatrix, setHistory } from '../store/dataSlice';
 import { createHistoryEntry } from '../utils/history';
 import { formatFullName } from '../mock/users';
+import { dataApi } from '../api/dataApi';
 
 export default function ScoringMatrix() {
   const dispatch = useAppDispatch();
@@ -23,9 +24,10 @@ export default function ScoringMatrix() {
     });
   };
 
-  const save = () => {
+  const save = async () => {
     const payload = { ...local, updatedAt: new Date().toISOString() };
     dispatch(setScoringMatrix(payload));
+    await dataApi.updateScoringMatrix(payload).catch(() => null);
     dispatch(
       setHistory([
         createHistoryEntry({

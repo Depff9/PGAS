@@ -12,6 +12,8 @@ import { initialNotifications } from '../mock/notifications';
 import { defaultScoringMatrix } from '../mock/scoringMatrix';
 import { migrateUsers } from '../utils/migrateUser';
 import { hydrateAchievements } from '../utils/migrateData';
+import { fetchBootstrapData } from '../api/dataApi';
+import { getToken } from '../api/client';
 
 const DATA_VERSION = 5;
 
@@ -96,7 +98,16 @@ function persist(key, stateKey) {
   return (state) => saveJson(key, state[stateKey]);
 }
 
-export const reloadData = createAsyncThunk('data/reload', async () => loadAll());
+export const reloadData = createAsyncThunk('data/reload', async () => {
+  if (!getToken()) return loadAll();
+
+  try {
+    const remote = await fetchBootstrapData();
+    return hydrate(remote);
+  } catch {
+    return loadAll();
+  }
+});
 
 const initial = loadAll();
 

@@ -3,6 +3,7 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { adminSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setFaculties } from '../store/dataSlice';
+import { dataApi } from '../api/dataApi';
 
 export default function Faculties() {
   const dispatch = useAppDispatch();
@@ -10,26 +11,32 @@ export default function Faculties() {
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
 
-  const add = (e) => {
+  const add = async (e) => {
     e.preventDefault();
+    const item = { id: 'f' + Date.now(), name: name.trim(), shortName: shortName.trim() };
     dispatch(
       setFaculties([
         ...faculties,
-        { id: 'f' + Date.now(), name: name.trim(), shortName: shortName.trim() },
+        item,
       ])
     );
+    await dataApi.createFaculty(item).catch(() => null);
     setName('');
     setShortName('');
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     dispatch(setFaculties(faculties.filter((f) => f.id !== id)));
+    await dataApi.deleteFaculty(id).catch(() => null);
   };
 
-  const update = (id, field, value) => {
+  const update = async (id, field, value) => {
+    const updated = faculties.map((f) => (f.id === id ? { ...f, [field]: value } : f));
     dispatch(
-      setFaculties(faculties.map((f) => (f.id === id ? { ...f, [field]: value } : f)))
+      setFaculties(updated)
     );
+    const changed = updated.find((f) => f.id === id);
+    await dataApi.updateFaculty(id, changed).catch(() => null);
   };
 
   return (

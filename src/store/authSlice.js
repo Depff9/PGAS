@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { loadJson, saveJson, STORAGE_KEYS } from '../utils/storage';
+import { setToken } from '../api/client';
 
 const session = loadJson(STORAGE_KEYS.SESSION, null);
 
@@ -22,6 +23,7 @@ const authSlice = createSlice({
       state.user = null;
       state.error = null;
       localStorage.removeItem('pgas_' + STORAGE_KEYS.SESSION);
+      setToken(null);
     },
     updateProfile(state, action) {
       if (state.user) {

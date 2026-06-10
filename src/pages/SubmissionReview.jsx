@@ -21,6 +21,7 @@ import {
 import { getEffectiveScore } from '../utils/scoring';
 import { SUBMISSION_STATUS_LABELS } from '../constants/submissions';
 import { createHistoryEntry } from '../utils/history';
+import { dataApi } from '../api/dataApi';
 
 export default function SubmissionReview() {
   const { submissionId } = useParams();
@@ -54,7 +55,7 @@ export default function SubmissionReview() {
     );
   }
 
-  const saveAch = (updated) => {
+  const saveAch = async (updated) => {
     const merged = achievements.map((a) => (a.id === updated.id ? updated : a));
     dispatch(setAchievements(merged));
     const synced = syncSubmissionFromAchievements(submission, merged);
@@ -84,6 +85,8 @@ export default function SubmissionReview() {
         )
       );
     }
+    await dataApi.updateAchievement(updated.id, updated).catch(() => null);
+    await dataApi.updateSubmissionStatus(submission.id, synced.status).catch(() => null);
   };
 
   return (

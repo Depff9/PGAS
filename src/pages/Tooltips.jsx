@@ -5,6 +5,7 @@ import { TOOLTIP_FIELD_KEYS } from '../config/tooltipFields';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setTooltips } from '../store/dataSlice';
 import TooltipInfo from '../components/TooltipInfo';
+import { dataApi } from '../api/dataApi';
 
 function PreviewField({ fieldKey }) {
   const fallback = TOOLTIP_FIELD_KEYS.find((k) => k.value === fieldKey)?.label || 'Элемент интерфейса';
@@ -32,7 +33,7 @@ export default function Tooltips() {
   });
   const [previewMode, setPreviewMode] = useState(false);
 
-  const add = (e) => {
+  const add = async (e) => {
     e.preventDefault();
     const existing = tooltips.find((t) => t.fieldKey === form.fieldKey);
     if (existing) {
@@ -45,19 +46,30 @@ export default function Tooltips() {
           )
         )
       );
+      await dataApi
+        .createOrUpdateTooltip({
+          id: existing.id,
+          fieldKey: form.fieldKey,
+          label: form.label,
+          text: form.text,
+        })
+        .catch(() => null);
     } else {
+      const created = { id: 't' + Date.now(), ...form };
       dispatch(
         setTooltips([
           ...tooltips,
-          { id: 't' + Date.now(), ...form },
+          created,
         ])
       );
+      await dataApi.createOrUpdateTooltip(created).catch(() => null);
     }
     setForm({ fieldKey: TOOLTIP_FIELD_KEYS[0].value, label: '', text: '' });
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     dispatch(setTooltips(tooltips.filter((t) => t.id !== id)));
+    await dataApi.deleteTooltip(id).catch(() => null);
   };
 
   const edit = (t) => {

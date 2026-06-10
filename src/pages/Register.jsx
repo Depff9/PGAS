@@ -2,16 +2,15 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import TooltipInfo from '../components/TooltipInfo';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { registerUser } from '../utils/auth';
+import { useAppDispatch } from '../store/hooks';
 import { UNIVERSITY } from '../config/university';
+import { registerApi } from '../api/authApi';
+import { loginSuccess } from '../store/authSlice';
+import { reloadData } from '../store/dataSlice';
 
 export default function Register() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const users = useAppSelector((s) => s.data.users);
-  const faculties = useAppSelector((s) => s.data.faculties);
-
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     lastName: '',
@@ -24,7 +23,7 @@ export default function Register() {
 
   const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirm) {
@@ -35,12 +34,20 @@ export default function Register() {
       setError('Пароль должен быть не короче 6 символов');
       return;
     }
-    const result = registerUser(dispatch, users, form, faculties);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    try {
+      const user = await registerApi({
+        email: form.email,
+        password: form.password,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        middleName: form.middleName,
+      });
+      dispatch(loginSuccess(user));
+      await dispatch(reloadData());
+      navigate('/profile');
+    } catch (error) {
+      setError(error.message || 'Ошибка регистрации');
     }
-    navigate('/profile');
   };
 
   return (

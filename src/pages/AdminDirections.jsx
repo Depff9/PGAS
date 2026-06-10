@@ -2,17 +2,19 @@ import DashboardLayout from '../layouts/DashboardLayout';
 import { commissionSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setDirections } from '../store/dataSlice';
+import { dataApi } from '../api/dataApi';
 
 export default function AdminDirections() {
   const dispatch = useAppDispatch();
   const directions = useAppSelector((s) => s.data.directions);
 
-  const update = (id, field, value) => {
+  const update = async (id, field, value) => {
+    const nextDirections = directions.map((d) => (d.id === id ? { ...d, [field]: value } : d));
     dispatch(
-      setDirections(
-        directions.map((d) => (d.id === id ? { ...d, [field]: value } : d))
-      )
+      setDirections(nextDirections)
     );
+    const updated = nextDirections.find((d) => d.id === id);
+    await dataApi.updateDirection(id, updated).catch(() => null);
   };
 
   return (

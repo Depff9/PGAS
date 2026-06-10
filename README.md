@@ -10,6 +10,22 @@ npm install
 npm run dev
 ```
 
+## Backend (PostgreSQL)
+
+Добавлен backend в папке `backend` на **Express + Prisma + PostgreSQL**.
+
+```bash
+npm run backend:install
+cd backend
+cp .env.example .env
+# указать DATABASE_URL на ваш PostgreSQL
+npm run prisma:migrate -- --name init
+npm run prisma:seed
+npm run dev
+```
+
+API будет доступен на `http://localhost:4000/api`.
+
 ## Демо (пароль `demo123`)
 
 | Роль | Email |

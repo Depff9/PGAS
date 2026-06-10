@@ -9,6 +9,7 @@ import { ROLES, formatFullName } from '../mock/users';
 import { createHistoryEntry } from '../utils/history';
 import Navbar from '../components/Navbar';
 import { buildRegulationsUpdatedNotification } from '../utils/notifications';
+import { dataApi } from '../api/dataApi';
 
 export default function Regulations({ readOnly = false }) {
   const dispatch = useAppDispatch();
@@ -50,7 +51,7 @@ export default function Regulations({ readOnly = false }) {
     setSections(sections.filter((s) => s.id !== id));
   };
 
-  const save = () => {
+  const save = async () => {
     const payload = {
       ...regulations,
       title,
@@ -61,6 +62,7 @@ export default function Regulations({ readOnly = false }) {
       updatedBy: user?.id,
     };
     dispatch(setRegulations(payload));
+    await dataApi.updateRegulations(payload).catch(() => null);
     const infoNotifications = users
       .filter((u) => u.role === ROLES.STUDENT)
       .map((u) =>
