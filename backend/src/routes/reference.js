@@ -72,7 +72,6 @@ router.get('/rating', authRequired, async (_req, res, next) => {
       prisma.achievement.findMany({
         where: {
           status: { in: ['submitted', 'approved', 'revision'] },
-          title: { not: null },
         },
         select: { userId: true, title: true, score: true, finalScore: true },
       }),
