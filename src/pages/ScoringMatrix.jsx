@@ -25,22 +25,23 @@ export default function ScoringMatrix() {
   };
 
   const save = async () => {
+    const historyEntry = createHistoryEntry({
+      category: 'scoring',
+      action: 'update',
+      summary: 'Обновлена матрица баллов',
+      userId: user.id,
+      userName: formatFullName(user),
+    });
     const payload = { ...local, updatedAt: new Date().toISOString() };
     dispatch(setScoringMatrix(payload));
     await dataApi.updateScoringMatrix(payload).catch(() => null);
     dispatch(
       setHistory([
-        createHistoryEntry({
-          category: 'scoring',
-          action: 'update',
-          summary: 'Обновлена матрица баллов',
-          userId: user.id,
-          userName: formatFullName(user),
-          snapshot: payload,
-        }),
+        { ...historyEntry, snapshot: payload },
         ...history,
       ])
     );
+    await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };

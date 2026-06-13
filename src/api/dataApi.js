@@ -1,8 +1,59 @@
 import { apiRequest } from './client';
+import { getToken } from './client';
+
+export async function fetchPublicReferenceData() {
+  return apiRequest('/reference/public');
+}
+
+export async function fetchRatingRows() {
+  return apiRequest('/reference/rating');
+}
+
+function parseDeadline(regulations) {
+  const section = regulations?.sections?.find((s) => s.id === 'r2');
+  const text = section?.content || '';
+  const dateMatch = text.match(/до\s+(\d{1,2})\s+([а-яё]+)\s+(\d{4})/i);
+  if (!dateMatch) return null;
+
+  const monthMap = {
+    января: 0,
+    февраля: 1,
+    марта: 2,
+    апреля: 3,
+    мая: 4,
+    июня: 5,
+    июля: 6,
+    августа: 7,
+    сентября: 8,
+    октября: 9,
+    ноября: 10,
+    декабря: 11,
+  };
+
+  const day = Number(dateMatch[1]);
+  const month = monthMap[dateMatch[2].toLowerCase()];
+  const year = Number(dateMatch[3]);
+  if (!Number.isFinite(day) || !Number.isFinite(year) || month == null) return null;
+  return new Date(year, month, day, 23, 59, 59).toISOString();
+}
 
 export async function fetchBootstrapData() {
+  const token = getToken();
+  if (!token) {
+    const pub = await fetchPublicReferenceData();
+    return {
+      users: [],
+      submissions: [],
+      achievements: [],
+      notifications: [],
+      history: [],
+      ...pub,
+    };
+  }
+
   const [
     users,
+    students,
     directions,
     faculties,
     groups,
@@ -12,9 +63,10 @@ export async function fetchBootstrapData() {
     submissions,
     achievements,
     notifications,
-    history,
+    historyRaw,
   ] = await Promise.all([
     apiRequest('/users').catch(() => []),
+    apiRequest('/reference/students').catch(() => []),
     apiRequest('/reference/directions'),
     apiRequest('/reference/faculties'),
     apiRequest('/reference/groups'),
@@ -27,8 +79,25 @@ export async function fetchBootstrapData() {
     apiRequest('/history').catch(() => []),
   ]);
 
+  const history = historyRaw.map((entry) => {
+    const payload = entry.payload || {};
+    return {
+      id: entry.id,
+      category: payload.category || entry.entity,
+      action: payload.action || entry.action,
+      summary: payload.summary || '',
+      userId: payload.userId || entry.createdBy || null,
+      userName: payload.userName || '',
+      snapshot: payload.snapshot || null,
+      targetId: payload.targetId || null,
+      metadata: payload.metadata || null,
+      createdAt: entry.createdAt,
+    };
+  });
+
   return {
-    users,
+    users: users.length ? users : students,
+    students,
     directions,
     faculties,
     groups,
@@ -39,10 +108,16 @@ export async function fetchBootstrapData() {
     achievements,
     notifications,
     history,
+    meta: {
+      deadlineIso: parseDeadline(regulations),
+    },
   };
 }
 
 export const dataApi = {
+  saveHistoryEntry: (payload) =>
+    apiRequest('/history', { method: 'POST', body: JSON.stringify(payload) }),
+  listHistory: () => apiRequest('/history'),
   createSubmission: (payload) =>
     apiRequest('/submissions', { method: 'POST', body: JSON.stringify(payload) }),
   listSubmissions: () => apiRequest('/submissions'),
@@ -50,6 +125,10 @@ export const dataApi = {
     apiRequest(`/submissions/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
+    }),
+  submitOwnSubmission: (id) =>
+    apiRequest(`/submissions/${id}/submit`, {
+      method: 'PATCH',
     }),
 
   createAchievement: (payload) =>

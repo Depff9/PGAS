@@ -2,6 +2,8 @@ import { buildDeadlineNotification } from './notifications';
 import { NOTIFICATION_TYPES } from './notifications';
 
 export function ensureDeadlineNotifications(users, notifications, regulations) {
+  if (!notifications?.length) return notifications || [];
+
   const students = users.filter((u) => u.role === 'student');
   const deadlineText =
     regulations.sections?.find((s) => s.id === 'r2')?.content ||

@@ -42,14 +42,7 @@ export default function AppRouter() {
         }
       />
       <Route path="/directions" element={<Directions />} />
-      <Route
-        path="/regulations"
-        element={
-          <ProtectedRoute>
-            <Regulations readOnly />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/regulations" element={<Regulations readOnly />} />
       <Route
         path="/applications"
         element={
@@ -125,17 +118,7 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/commission/scoring"
-        element={
-          <ProtectedRoute
-            roles={[ROLES.COMMISSION]}
-            commissionPermission="canEditScoringMatrix"
-          >
-            <ScoringMatrix />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/commission/scoring" element={<Navigate to="/commission/regulations" replace />} />
       <Route
         path="/commission/export"
         element={
@@ -162,7 +145,23 @@ export default function AppRouter() {
         }
       />
       <Route
-        path="/admin/users"
+        path="/admin/students"
+        element={
+          <ProtectedRoute roles={[ROLES.ADMIN]}>
+            <Users />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/commission"
+        element={
+          <ProtectedRoute roles={[ROLES.ADMIN]}>
+            <Users />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/admins"
         element={
           <ProtectedRoute roles={[ROLES.ADMIN]}>
             <Users />
@@ -206,6 +205,7 @@ export default function AppRouter() {
       <Route path="/admin/scoring" element={<Navigate to="/admin" replace />} />
       <Route path="/admin/directions" element={<Navigate to="/admin" replace />} />
       <Route path="/admin/regulations" element={<Navigate to="/admin" replace />} />
+      <Route path="/admin/users" element={<Navigate to="/admin/students" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -26,6 +26,8 @@ npm run dev
 
 API будет доступен на `http://localhost:4000/api`.
 
+Подробная инструкция для запуска на новом ПК: `RUN_ON_NEW_PC.md`.
+
 ## Демо (пароль `demo123`)
 
 | Роль | Email |
@@ -35,6 +37,8 @@ API будет доступен на `http://localhost:4000/api`.
 | Админ (программист) | `admin@brgu.ru` |
 
 После обновления версии данных (`DATA_VERSION` в `dataSlice`) localStorage сбрасывается автоматически.
+
+Для backend-дедлайна подачи можно задать `SUBMISSION_DEADLINE_ISO` в `backend/.env`.
 
 ## Роли
 

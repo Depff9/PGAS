@@ -47,14 +47,6 @@ export default function ComissionDashboard() {
             subtitle="5 направлений ПГАС"
           />
         )}
-        {user?.permissions?.canEditScoringMatrix && (
-          <DashboardCard
-            to="/commission/scoring"
-            icon="🗂️"
-            title="Уровни достижений"
-            subtitle="Справочник уровней"
-          />
-        )}
         <DashboardCard
           to="/commission/export"
           icon="📥"

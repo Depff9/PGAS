@@ -7,4 +7,5 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'change-me-in-production',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  submissionDeadlineIso: process.env.SUBMISSION_DEADLINE_ISO || '',
 };

@@ -5,11 +5,34 @@ import { commissionSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setRegulations, setHistory } from '../store/dataSlice';
 import { setNotifications } from '../store/dataSlice';
+import { setScoringMatrix } from '../store/dataSlice';
 import { ROLES, formatFullName } from '../mock/users';
 import { createHistoryEntry } from '../utils/history';
 import Navbar from '../components/Navbar';
 import { buildRegulationsUpdatedNotification } from '../utils/notifications';
 import { dataApi } from '../api/dataApi';
+
+function parseSubmissionDeadlines(regulations) {
+  const source = regulations?.submissionDeadlines || {};
+  if (source.winter || source.summer) {
+    return {
+      winter: source.winter || '10 февраля',
+      summer: source.summer || '1 июля',
+    };
+  }
+  const section = regulations?.sections?.find((s) => s.id === 'r2');
+  const text = section?.content || '';
+  const winter = text.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  const summer = text.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  return {
+    winter: winter || '10 февраля',
+    summer: summer || '1 июля',
+  };
+}
+
+function buildDeadlineSectionContent(deadlines) {
+  return `Приём документов: по итогам зимней сессии — до ${deadlines.winter}, по итогам летней сессии — до ${deadlines.summer}. Назначение производится не реже двух раз в год по итогам промежуточной аттестации.`;
+}
 
 export default function Regulations({ readOnly = false }) {
   const dispatch = useAppDispatch();
@@ -17,19 +40,24 @@ export default function Regulations({ readOnly = false }) {
   const directions = useAppSelector((s) => s.data.directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const history = useAppSelector((s) => s.data.history);
+  const scoringMatrix = useAppSelector((s) => s.data.scoringMatrix);
   const users = useAppSelector((s) => s.data.users);
   const notifications = useAppSelector((s) => s.data.notifications);
   const canEdit = !readOnly && user?.role === ROLES.COMMISSION;
   const shouldRedirect =
     !readOnly && user?.role === ROLES.COMMISSION && !user.permissions?.canEditRegulations;
 
-  const [title, setTitle] = useState(regulations.title);
-  const [sections, setSections] = useState(regulations.sections || []);
+  const [title, setTitle] = useState(regulations?.title || 'Регламент ПГАС');
+  const [sections, setSections] = useState(regulations?.sections || []);
   const [directionLimits, setDirectionLimits] = useState(
-    regulations.directionLimits || {}
+    regulations?.directionLimits || {}
   );
-  const [defaultMax, setDefaultMax] = useState(regulations.defaultMaxPerDirection ?? 7);
+  const [defaultMax, setDefaultMax] = useState(regulations?.defaultMaxPerDirection ?? 7);
+  const [submissionDeadlines, setSubmissionDeadlines] = useState(
+    parseSubmissionDeadlines(regulations)
+  );
   const [saved, setSaved] = useState(false);
+  const [localLevels, setLocalLevels] = useState(scoringMatrix?.levels || []);
 
   if (shouldRedirect) {
     return <Navigate to="/commission" replace />;
@@ -52,10 +80,20 @@ export default function Regulations({ readOnly = false }) {
   };
 
   const save = async () => {
+    const historyEntry = createHistoryEntry({
+      category: 'regulations',
+      action: 'update',
+      summary: 'Обновлён регламент подачи заявлений',
+      userId: user.id,
+      userName: formatFullName(user),
+    });
+    const nextSections = sections.map((s) =>
+      s.id === 'r2' ? { ...s, content: buildDeadlineSectionContent(submissionDeadlines) } : s
+    );
     const payload = {
       ...regulations,
       title,
-      sections,
+      sections: nextSections,
       defaultMaxPerDirection: Number(defaultMax) || 7,
       directionLimits: { ...directionLimits },
       updatedAt: new Date().toISOString(),
@@ -63,6 +101,13 @@ export default function Regulations({ readOnly = false }) {
     };
     dispatch(setRegulations(payload));
     await dataApi.updateRegulations(payload).catch(() => null);
+    const nextMatrix = {
+      ...scoringMatrix,
+      levels: localLevels,
+      updatedAt: new Date().toISOString(),
+    };
+    dispatch(setScoringMatrix(nextMatrix));
+    await dataApi.updateScoringMatrix(nextMatrix).catch(() => null);
     const infoNotifications = users
       .filter((u) => u.role === ROLES.STUDENT)
       .map((u) =>
@@ -74,20 +119,25 @@ export default function Regulations({ readOnly = false }) {
     dispatch(setNotifications([...infoNotifications, ...notifications]));
     dispatch(
       setHistory([
-        createHistoryEntry({
-          category: 'regulations',
-          action: 'update',
-          summary: 'Обновлён регламент подачи заявлений',
-          userId: user.id,
-          userName: formatFullName(user),
-          snapshot: payload,
-        }),
+        { ...historyEntry, snapshot: payload },
         ...history,
       ])
     );
+    await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
+
+  if (!regulations) {
+    return (
+      <div className="app-shell">
+        <Navbar />
+        <div className="container page-content">
+          <div className="alert alert--error">Регламент пока не загружен</div>
+        </div>
+      </div>
+    );
+  }
 
   const content = (
     <>
@@ -110,6 +160,63 @@ export default function Regulations({ readOnly = false }) {
           </div>
         ) : (
           <h2 style={{ marginTop: 0 }}>{regulations.title}</h2>
+        )}
+
+        {canEdit && (
+          <div className="editor-block">
+            <h3 style={{ marginTop: 0 }}>Уровни мероприятий</h3>
+            <div className="form-row form-row--2" style={{ marginBottom: '0.5rem' }}>
+              {localLevels.map((l) => (
+                <div key={l.id} className="form-group">
+                  <input
+                    value={l.label}
+                    onChange={(e) =>
+                      setLocalLevels(
+                        localLevels.map((x) => (x.id === l.id ? { ...x, label: e.target.value } : x))
+                      )
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {canEdit && (
+          <div className="editor-block">
+            <h3 style={{ marginTop: 0 }}>Сроки подачи заявлений</h3>
+            <p className="form-hint">
+              Эти сроки используются в интерфейсе и для автоматических ограничений системы.
+            </p>
+            <div className="form-row form-row--2">
+              <div className="form-group">
+                <label>По итогам зимней сессии</label>
+                <input
+                  value={submissionDeadlines.winter}
+                  onChange={(e) =>
+                    setSubmissionDeadlines({
+                      ...submissionDeadlines,
+                      winter: e.target.value,
+                    })
+                  }
+                  placeholder="например, 10 февраля"
+                />
+              </div>
+              <div className="form-group">
+                <label>По итогам летней сессии</label>
+                <input
+                  value={submissionDeadlines.summer}
+                  onChange={(e) =>
+                    setSubmissionDeadlines({
+                      ...submissionDeadlines,
+                      summer: e.target.value,
+                    })
+                  }
+                  placeholder="например, 1 июля"
+                />
+              </div>
+            </div>
+          </div>
         )}
 
         {canEdit && (
@@ -150,6 +257,27 @@ export default function Regulations({ readOnly = false }) {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!canEdit && (
+          <div className="card editor-block">
+            <h3>Уровни мероприятий</h3>
+            <ul>
+              {(scoringMatrix?.levels || []).map((l) => (
+                <li key={l.id}>{l.label}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!canEdit && (
+          <div className="card editor-block">
+            <h3>Сроки подачи заявлений</h3>
+            <ul>
+              <li>По итогам зимней сессии: {parseSubmissionDeadlines(regulations).winter}</li>
+              <li>По итогам летней сессии: {parseSubmissionDeadlines(regulations).summer}</li>
+            </ul>
           </div>
         )}
 

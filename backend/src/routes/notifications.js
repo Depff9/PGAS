@@ -21,6 +21,10 @@ router.get('/', async (req, res, next) => {
 router.patch('/:id/read', async (req, res, next) => {
   try {
     const { id } = req.params;
+    const existing = await prisma.notification.findUnique({ where: { id } });
+    if (!existing || existing.userId !== req.auth.id) {
+      return res.status(404).json({ error: 'Уведомление не найдено' });
+    }
     const updated = await prisma.notification.update({
       where: { id },
       data: { read: true },

@@ -18,32 +18,6 @@ export const STATUS_LABELS = {
 
 const rawApplications = [
   {
-    id: 'app1',
-    userId: 'u1',
-    directionId: 'd1',
-    title: 'Отличная успеваемость за 2024–2025 уч. год',
-    description:
-      'Средний балл 4.9, все сессии сданы на «отлично». Подтверждено справкой деканата факультета энергетики и автоматики БрГУ.',
-    attachments: [],
-    achievementLevel: 'faculty',
-    status: APPLICATION_STATUSES.APPROVED,
-    createdAt: '2025-09-15T10:00:00.000Z',
-    updatedAt: '2025-09-20T09:00:00.000Z',
-  },
-  {
-    id: 'app2',
-    userId: 'u1',
-    directionId: 'd2',
-    title: 'Доклад на студенческой конференции БрГУ',
-    description:
-      'Участие в межвузовской научной конференции с докладом по энергетике. Тезисы опубликованы в сборнике материалов конференции.',
-    attachments: [],
-    achievementLevel: 'regional',
-    status: APPLICATION_STATUSES.REVIEW,
-    createdAt: '2025-10-01T14:30:00.000Z',
-    updatedAt: '2025-10-02T09:00:00.000Z',
-  },
-  {
     id: 'app3',
     userId: 'u5',
     directionId: 'd1',

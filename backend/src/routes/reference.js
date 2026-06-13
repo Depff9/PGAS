@@ -4,6 +4,114 @@ import { authRequired, requireRoles } from '../middleware/auth.js';
 
 const router = Router();
 
+router.get('/public', async (_req, res, next) => {
+  try {
+    const [directions, faculties, groups, tooltips, regulations, scoringMatrix] =
+      await Promise.all([
+        prisma.direction.findMany({ orderBy: { id: 'asc' } }),
+        prisma.faculty.findMany({ orderBy: { shortName: 'asc' } }),
+        prisma.group.findMany({ orderBy: { name: 'asc' } }),
+        prisma.tooltip.findMany({ orderBy: { id: 'asc' } }),
+        prisma.regulation.findUnique({ where: { id: 1 } }),
+        prisma.scoringMatrix.findUnique({ where: { id: 1 } }),
+      ]);
+
+    res.json({
+      directions,
+      faculties,
+      groups,
+      tooltips,
+      regulations,
+      scoringMatrix,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/students', async (_req, res, next) => {
+  try {
+    const students = await prisma.user.findMany({
+      where: { role: 'student' },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      select: {
+        id: true,
+        role: true,
+        lastName: true,
+        firstName: true,
+        middleName: true,
+        facultyId: true,
+        group: true,
+      },
+    });
+    res.json(students);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/rating', authRequired, async (_req, res, next) => {
+  try {
+    const [students, submissions, achievements] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: 'student' },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        select: {
+          id: true,
+          lastName: true,
+          firstName: true,
+          middleName: true,
+          facultyId: true,
+          group: true,
+        },
+      }),
+      prisma.submission.findMany({
+        where: { status: { not: 'draft' } },
+        select: { userId: true },
+      }),
+      prisma.achievement.findMany({
+        where: {
+          status: { in: ['submitted', 'approved', 'revision'] },
+          title: { not: '' },
+        },
+        select: { userId: true, score: true, finalScore: true },
+      }),
+    ]);
+
+    const submittedUserIds = new Set(submissions.map((s) => s.userId));
+    const scoreByUser = new Map();
+    const countByUser = new Map();
+
+    achievements.forEach((item) => {
+      submittedUserIds.add(item.userId);
+      const score = Number(item.finalScore ?? item.score ?? 0);
+      scoreByUser.set(item.userId, (scoreByUser.get(item.userId) || 0) + score);
+      countByUser.set(item.userId, (countByUser.get(item.userId) || 0) + 1);
+    });
+
+    const rows = students
+      .filter((student) => submittedUserIds.has(student.id))
+      .map((student) => ({
+        userId: student.id,
+        fullName: [student.lastName, student.firstName, student.middleName].filter(Boolean).join(' '),
+        facultyId: student.facultyId || null,
+        group: student.group || '',
+        totalScore: scoreByUser.get(student.id) || 0,
+        achievementsCount: countByUser.get(student.id) || 0,
+      }))
+      .sort(
+        (a, b) =>
+          b.totalScore - a.totalScore ||
+          a.fullName.localeCompare(b.fullName, 'ru')
+      )
+      .map((row, index) => ({ ...row, place: index + 1 }));
+
+    res.json(rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/directions', authRequired, async (_req, res, next) => {
   try {
     const data = await prisma.direction.findMany({ orderBy: { id: 'asc' } });

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSubmissions, setAchievements } from '../store/dataSlice';
@@ -18,12 +19,27 @@ import {
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { dataApi } from '../api/dataApi';
 
+function getDeadlineLabel(regulations) {
+  const section = regulations?.sections?.find((s) => s.id === 'r2');
+  const content = section?.content || '';
+  const winter = content.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  const summer = content.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  if (winter && summer) return `${winter} / ${summer}`;
+  const explicit = content.match(/до\s+(\d{1,2}\s+\S+)/i)?.[1];
+  if (explicit) return explicit;
+  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
+  return allDates.at(-1) || 'даты из регламента';
+}
+
 export default function Applications() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const submissions = useAppSelector((s) => s.data.submissions);
   const achievements = useAppSelector((s) => s.data.achievements);
   const directions = useAppSelector((s) => s.data.directions);
+  const regulations = useAppSelector((s) => s.data.regulations);
+  const deadlineIso = useAppSelector((s) => s.data.meta?.deadlineIso);
+  const [requestError, setRequestError] = useState('');
 
   let submission = getStudentSubmission(submissions, user?.id);
   if (!submission && user) {
@@ -33,6 +49,8 @@ export default function Applications() {
   const subAch = submission
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
+  const isDeadlineReached = deadlineIso ? new Date(deadlineIso).getTime() < Date.now() : false;
+  const deadlineLabel = getDeadlineLabel(regulations);
   const filled = countFilledAchievements(subAch);
   const totalScore = getSubmissionTotalScore(subAch);
 
@@ -42,6 +60,11 @@ export default function Applications() {
   }));
 
   const submitApplication = async () => {
+    setRequestError('');
+    if (isDeadlineReached) {
+      alert('Окончание сроков подачи наступило. Отправка заявления недоступна.');
+      return;
+    }
     if (filled === 0) {
       alert('Добавьте хотя бы одно достижение в таблице');
       return;
@@ -54,9 +77,11 @@ export default function Applications() {
     const otherAch = achievements.filter((a) => a.submissionId !== submission.id);
     dispatch(setAchievements([...otherAch, ...updatedAch]));
     const synced = syncSubmissionFromAchievements(
-      { ...submission, submittedAt: new Date().toISOString() },
+      { ...submission, submittedAt: new Date().toISOString(), status: SUBMISSION_STATUS.SUBMITTED },
       [...otherAch, ...updatedAch]
     );
+    synced.status = SUBMISSION_STATUS.SUBMITTED;
+    synced.submittedAt = new Date().toISOString();
     dispatch(
       setSubmissions(
         submissions.some((s) => s.id === synced.id)
@@ -64,12 +89,12 @@ export default function Applications() {
           : [...submissions, synced]
       )
     );
-    await dataApi.updateSubmissionStatus(synced.id, 'submitted').catch(() => null);
-    await Promise.all(
-      updatedAch
-        .filter((a) => a.status === 'submitted')
-        .map((a) => dataApi.updateAchievement(a.id, { status: 'submitted' }).catch(() => null))
-    );
+    try {
+      await dataApi.submitOwnSubmission(synced.id);
+    } catch (error) {
+      setRequestError(error.message || 'Не удалось подать заявление');
+      return;
+    }
     alert('Заявление на ПГАС подано');
   };
 
@@ -84,6 +109,13 @@ export default function Applications() {
             Внутри — достижения по направлениям.
           </p>
         </header>
+
+        {isDeadlineReached && (
+          <div className="alert alert--warning">
+            Окончание сроков подачи ({deadlineLabel}) наступило. Новые отправки недоступны.
+          </div>
+        )}
+        {requestError && <div className="alert alert--error">{requestError}</div>}
 
         <div className="card submission-card">
           <div className="submission-card__head">
@@ -157,7 +189,7 @@ export default function Applications() {
             <Link to="/application/workspace" className="btn btn--primary">
               Открыть таблицу достижений
             </Link>
-            {submission?.status === SUBMISSION_STATUS.DRAFT && (
+            {submission?.status === SUBMISSION_STATUS.DRAFT && !isDeadlineReached && (
               <button type="button" className="btn btn--ghost" onClick={submitApplication}>
                 Подать заявление
               </button>

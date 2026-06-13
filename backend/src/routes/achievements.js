@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError } from '../utils/http.js';
+import { assertDeadlineOpen } from '../utils/deadline.js';
 
 const router = Router();
 
@@ -26,10 +27,16 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', requireRoles('student'), async (req, res, next) => {
   try {
+    assertDeadlineOpen();
     const body = req.body || {};
+    const submission = await prisma.submission.findUnique({
+      where: { id: String(body.submissionId) },
+    });
+    if (!submission) throw createHttpError(404, 'Заявка не найдена');
+    if (submission.userId !== req.auth.id) throw createHttpError(403, 'Нет доступа к заявке');
     const achievement = await prisma.achievement.create({
       data: {
-        id: `ach-${Date.now()}`,
+        id: String(body.id || `ach-${Date.now()}`),
         submissionId: String(body.submissionId),
         userId: req.auth.id,
         directionId: String(body.directionId),
@@ -61,18 +68,37 @@ router.patch('/:id', async (req, res, next) => {
     const isCommission = req.auth.role === 'commission' || req.auth.role === 'admin';
     if (!isStudentOwner && !isCommission) throw createHttpError(403, 'Нет прав на изменение');
 
+    if (isStudentOwner) {
+      assertDeadlineOpen();
+      if (existing.status === 'submitted') {
+        throw createHttpError(
+          409,
+          'Поданное достижение можно изменить только после возврата на доработку.'
+        );
+      }
+    }
+
+    const updateData = isStudentOwner
+      ? {
+          title: body.title ?? undefined,
+          description: body.description ?? undefined,
+          attachments: body.attachments ?? undefined,
+          achievementLevel: body.achievementLevel ?? undefined,
+          status: body.status ?? undefined,
+          score: body.score ?? undefined,
+          finalScore: body.finalScore ?? undefined,
+          revision: body.revision ?? undefined,
+        }
+      : {
+          status: body.status ?? undefined,
+          score: body.score ?? undefined,
+          finalScore: body.finalScore ?? undefined,
+          revision: body.revision ?? undefined,
+        };
+
     const updated = await prisma.achievement.update({
       where: { id },
-      data: {
-        title: body.title ?? undefined,
-        description: body.description ?? undefined,
-        attachments: body.attachments ?? undefined,
-        achievementLevel: body.achievementLevel ?? undefined,
-        status: body.status ?? undefined,
-        score: body.score ?? undefined,
-        finalScore: body.finalScore ?? undefined,
-        revision: body.revision ?? undefined,
-      },
+      data: updateData,
     });
     res.json(updated);
   } catch (error) {
@@ -88,6 +114,15 @@ router.delete('/:id', requireRoles('student', 'admin'), async (req, res, next) =
 
     if (req.auth.role === 'student' && existing.userId !== req.auth.id) {
       throw createHttpError(403, 'Нет прав на удаление');
+    }
+    if (req.auth.role === 'student') {
+      assertDeadlineOpen();
+      if (existing.status === 'submitted') {
+        throw createHttpError(
+          409,
+          'Поданное достижение нельзя удалить до возврата на доработку.'
+        );
+      }
     }
 
     await prisma.achievement.delete({ where: { id } });

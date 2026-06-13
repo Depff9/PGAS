@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError, pickUserSafeFields } from '../utils/http.js';
+import { assertValidPersonName } from '../utils/personName.js';
 
 const router = Router();
 
@@ -22,6 +23,9 @@ router.get('/', async (_req, res, next) => {
 router.post('/', requireRoles('admin'), async (req, res, next) => {
   try {
     const data = req.body || {};
+    const firstName = assertValidPersonName(data.firstName, 'Имя');
+    const lastName = assertValidPersonName(data.lastName, 'Фамилия');
+    const middleName = assertValidPersonName(data.middleName, 'Отчество', false);
     const passwordHash = await bcrypt.hash(String(data.password || 'demo123'), 10);
     const created = await prisma.user.create({
       data: {
@@ -29,9 +33,9 @@ router.post('/', requireRoles('admin'), async (req, res, next) => {
         email: String(data.email || '').trim().toLowerCase(),
         passwordHash,
         role: data.role || 'student',
-        lastName: data.lastName || '',
-        firstName: data.firstName || '',
-        middleName: data.middleName || null,
+        lastName,
+        firstName,
+        middleName: middleName || null,
         facultyId: data.facultyId || null,
         group: data.group || null,
         recordBookNumber: data.recordBookNumber || null,
@@ -52,9 +56,13 @@ router.patch('/:id', requireRoles('admin'), async (req, res, next) => {
 
     const updateData = {
       role: data.role,
-      lastName: data.lastName,
-      firstName: data.firstName,
-      middleName: data.middleName,
+      lastName:
+        data.lastName == null ? undefined : assertValidPersonName(data.lastName, 'Фамилия'),
+      firstName: data.firstName == null ? undefined : assertValidPersonName(data.firstName, 'Имя'),
+      middleName:
+        data.middleName == null
+          ? undefined
+          : assertValidPersonName(data.middleName, 'Отчество', false),
       facultyId: data.facultyId,
       group: data.group,
       recordBookNumber: data.recordBookNumber,
@@ -84,9 +92,14 @@ router.patch('/me/profile', async (req, res, next) => {
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
-        firstName: body.firstName ?? undefined,
-        lastName: body.lastName ?? undefined,
-        middleName: body.middleName ?? undefined,
+        firstName:
+          body.firstName == null ? undefined : assertValidPersonName(body.firstName, 'Имя'),
+        lastName:
+          body.lastName == null ? undefined : assertValidPersonName(body.lastName, 'Фамилия'),
+        middleName:
+          body.middleName == null
+            ? undefined
+            : assertValidPersonName(body.middleName, 'Отчество', false),
         facultyId: body.facultyId ?? undefined,
         group: body.group ?? undefined,
         recordBookNumber: body.recordBookNumber ?? undefined,

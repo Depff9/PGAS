@@ -5,6 +5,7 @@ import { prisma } from '../db.js';
 import { config } from '../config.js';
 import { createHttpError, pickUserSafeFields } from '../utils/http.js';
 import { authRequired } from '../middleware/auth.js';
+import { assertValidPersonName } from '../utils/personName.js';
 
 const router = Router();
 
@@ -47,9 +48,9 @@ router.post('/register', async (req, res, next) => {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const password = String(req.body?.password || '');
-    const firstName = String(req.body?.firstName || '').trim();
-    const lastName = String(req.body?.lastName || '').trim();
-    const middleName = String(req.body?.middleName || '').trim();
+    const firstName = assertValidPersonName(req.body?.firstName, 'Имя');
+    const lastName = assertValidPersonName(req.body?.lastName, 'Фамилия');
+    const middleName = assertValidPersonName(req.body?.middleName, 'Отчество', false);
 
     if (!email || !password || !firstName || !lastName) {
       throw createHttpError(400, 'Заполните обязательные поля');

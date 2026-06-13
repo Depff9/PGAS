@@ -22,11 +22,11 @@ export default function AdminDashboard() {
 
       <div className="grid-2">
         <DashboardCard
-          to="/admin/users"
+          to="/admin/students"
           icon="👥"
-          value={users.length}
-          title="Пользователей"
-          subtitle={`из них ${students} студентов`}
+          value={students}
+          title="Студентов"
+          subtitle="участники подачи заявлений"
         />
         <DashboardCard
           to="/admin/faculties"
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
           subtitle="Тултипы интерфейса"
         />
         <DashboardCard
-          to="/admin/users"
+          to="/admin/commission"
           icon="🧑‍⚖️"
           value={commission}
           title="Членов комиссии"

@@ -3,6 +3,7 @@ import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { findFaculty, getFacultyLabel } from '../mock/faculties';
 import { formatFullName } from '../mock/users';
 import { getEffectiveScore } from './scoring';
+import { SUBMISSION_STATUS } from '../constants/submissions';
 
 const COUNTED_STATUSES = [
   ACHIEVEMENT_STATUS.SUBMITTED,
@@ -47,9 +48,35 @@ export function buildFacultyRating(facultyId, users, achievements, faculties) {
   };
 }
 
-export function buildOverallRating(users, achievements, faculties) {
-  return users
-    .filter((u) => u.role === ROLES.STUDENT)
+export function buildOverallRating(users, achievements, faculties, submissions = []) {
+  const studentById = new Map(
+    users.filter((u) => u.role === ROLES.STUDENT).map((u) => [u.id, u])
+  );
+  const studentsFromSubmissions = submissions
+    .map((s) => s.user)
+    .filter((u) => u && u.role === ROLES.STUDENT)
+    .filter((u, index, arr) => arr.findIndex((item) => item.id === u.id) === index);
+  studentsFromSubmissions.forEach((student) => {
+    if (!studentById.has(student.id)) {
+      studentById.set(student.id, student);
+    }
+  });
+
+  const submittedUserIds = new Set();
+  const hasSubmittedAchievementsByUser = new Set(
+    achievements
+      .filter((a) => a.title && COUNTED_STATUSES.includes(a.status))
+      .map((a) => a.userId)
+  );
+  submissions.forEach((s) => {
+    if (s.status && s.status !== SUBMISSION_STATUS.DRAFT) {
+      submittedUserIds.add(s.userId);
+    }
+  });
+  hasSubmittedAchievementsByUser.forEach((id) => submittedUserIds.add(id));
+
+  return [...studentById.values()]
+    .filter((u) => submittedUserIds.has(u.id))
     .map((student) => {
       const faculty = findFaculty(faculties, student.facultyId);
       return {
@@ -62,7 +89,6 @@ export function buildOverallRating(users, achievements, faculties) {
         ).length,
       };
     })
-    .filter((row) => row.achievementsCount > 0)
     .sort(
       (a, b) =>
         b.totalScore - a.totalScore ||

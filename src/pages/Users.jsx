@@ -1,4 +1,5 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { adminSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -8,6 +9,9 @@ import { getFacultyLabel, findFaculty } from '../mock/faculties';
 import { migrateUser } from '../utils/migrateUser';
 import { createHistoryEntry } from '../utils/history';
 import { dataApi } from '../api/dataApi';
+import { isValidPersonName, sanitizePersonNameInput } from '../utils/personName';
+import SortableHeader from '../components/SortableHeader';
+import { sortBySelectors, toggleSortState } from '../utils/tableSort';
 
 function buildCommissionPermissions(permissions) {
   return {
@@ -20,12 +24,39 @@ function buildCommissionPermissions(permissions) {
 
 export default function Users() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
   const users = useAppSelector((s) => s.data.users);
   const faculties = useAppSelector((s) => s.data.faculties);
   const groups = useAppSelector((s) => s.data.groups);
   const directions = useAppSelector((s) => s.data.directions);
   const currentUser = useAppSelector((s) => s.auth.user);
   const history = useAppSelector((s) => s.data.history);
+  const currentPath = location.pathname;
+  const mode =
+    currentPath === '/admin/commission'
+      ? ROLES.COMMISSION
+      : currentPath === '/admin/admins'
+        ? ROLES.ADMIN
+        : ROLES.STUDENT;
+  const filteredUsers = users.filter((u) => {
+    if (u.id === currentUser?.id) return false;
+    return u.role === mode;
+  });
+  const [sortState, setSortState] = useState({ key: 'fullName', dir: 'asc' });
+  const [requestError, setRequestError] = useState('');
+  const sortedUsers = useMemo(
+    () =>
+      sortBySelectors(filteredUsers, sortState, {
+        fullName: (u) => formatFullName(u),
+        email: (u) => u.email,
+        facultyGroup: (u) =>
+          u.role === ROLES.STUDENT
+            ? `${getFacultyLabel(findFaculty(faculties, u.facultyId))} ${u.group || ''}`
+            : '',
+        role: (u) => ROLE_LABELS[u.role],
+      }),
+    [filteredUsers, sortState, faculties]
+  );
 
   const [form, setForm] = useState({
     email: '',
@@ -35,6 +66,7 @@ export default function Users() {
     firstName: '',
     middleName: '',
   });
+  const [hasNoMiddleName, setHasNoMiddleName] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
@@ -45,6 +77,10 @@ export default function Users() {
       group: u.group || '',
       recordBookNumber: u.recordBookNumber || '',
       studentCardNumber: u.studentCardNumber || '',
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      middleName: u.middleName || '',
+      hasNoMiddleName: !u.middleName,
       commissionPermissions: {
         canEditRegulations: u.permissions?.canEditRegulations ?? false,
         canEditDirections: u.permissions?.canEditDirections ?? false,
@@ -55,13 +91,43 @@ export default function Users() {
   };
 
   const saveEdit = async () => {
+    setRequestError('');
+    if (!isValidPersonName(editForm.lastName) || !isValidPersonName(editForm.firstName)) {
+      alert('Фамилия и имя должны содержать только русские буквы (допустим дефис)');
+      return;
+    }
+    if (
+      !editForm.hasNoMiddleName &&
+      editForm.middleName.trim() &&
+      !isValidPersonName(editForm.middleName)
+    ) {
+      alert('Отчество должно содержать только русские буквы (допустим дефис)');
+      return;
+    }
     const editedUser = users.find((u) => u.id === editId);
+    const historyEntry = createHistoryEntry({
+      category: 'admin.users',
+      action: 'update',
+      summary: `Обновлены настройки пользователя: ${formatFullName({
+        ...editedUser,
+        firstName: editForm.firstName?.trim() || editedUser?.firstName,
+        lastName: editForm.lastName?.trim() || editedUser?.lastName,
+        middleName: editForm.hasNoMiddleName ? null : editForm.middleName?.trim() || null,
+      })}`,
+      userId: currentUser.id,
+      userName: formatFullName(currentUser),
+      targetId: editId,
+      metadata: { role: editedUser?.role },
+    });
     const updatedUsers = users.map((u) =>
       u.id === editId
         ? migrateUser(
             {
               ...u,
               ...editForm,
+              firstName: editForm.firstName?.trim() || u.firstName,
+              lastName: editForm.lastName?.trim() || u.lastName,
+              middleName: editForm.hasNoMiddleName ? null : editForm.middleName?.trim() || null,
               permissions:
                 u.role === ROLES.COMMISSION ? editForm.commissionPermissions : u.permissions,
               group: editForm.group?.trim() || null,
@@ -77,7 +143,7 @@ export default function Users() {
         editedUser?.role === ROLES.COMMISSION ? nextPermissions : editedUser?.permissions,
     };
     dispatch(setUsers(updatedUsers));
-    await dataApi
+    const remoteUpdated = await dataApi
       .updateUser(editId, {
         role: nextPayload.role,
         firstName: nextPayload.firstName,
@@ -89,36 +155,54 @@ export default function Users() {
         studentCardNumber: nextPayload.studentCardNumber,
         permissions: nextPayload.permissions,
       })
-      .catch(() => null);
+      .catch((error) => {
+        setRequestError(error.message || 'Не удалось сохранить пользователя');
+        return null;
+      });
+    if (remoteUpdated?.id) {
+      dispatch(
+        setUsers(
+          updatedUsers.map((u) =>
+            u.id === remoteUpdated.id ? migrateUser(remoteUpdated, faculties) : u
+          )
+        )
+      );
+    }
     dispatch(
       setHistory([
-        createHistoryEntry({
-          category: 'admin.users',
-          action: 'update',
-          summary: `Обновлены настройки пользователя: ${formatFullName(editedUser)}`,
-          userId: currentUser.id,
-          userName: formatFullName(currentUser),
-          targetId: editId,
-          metadata: { role: editedUser?.role },
-        }),
+        historyEntry,
         ...history,
       ])
     );
+    await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
     setEditId(null);
     setEditForm(null);
   };
 
   const addUser = async (e) => {
     e.preventDefault();
+    setRequestError('');
+    if (!isValidPersonName(form.lastName) || !isValidPersonName(form.firstName)) {
+      alert('Фамилия и имя должны содержать только русские буквы (допустим дефис)');
+      return;
+    }
+    if (!hasNoMiddleName && form.middleName.trim() && !isValidPersonName(form.middleName)) {
+      alert('Отчество должно содержать только русские буквы (допустим дефис)');
+      return;
+    }
     const newUser = migrateUser(
       {
         id: 'u' + Date.now(),
         ...form,
+        role: mode,
         email: form.email.trim().toLowerCase(),
-        facultyId: form.role === ROLES.STUDENT ? null : null,
-        group: form.role === ROLES.STUDENT ? null : null,
+        lastName: form.lastName.trim(),
+        firstName: form.firstName.trim(),
+        middleName: hasNoMiddleName ? null : form.middleName.trim() || null,
+        facultyId: mode === ROLES.STUDENT ? null : null,
+        group: mode === ROLES.STUDENT ? null : null,
         permissions:
-          form.role === ROLES.COMMISSION
+          mode === ROLES.COMMISSION
             ? {
                 canEditRegulations: false,
                 canEditDirections: false,
@@ -132,7 +216,23 @@ export default function Users() {
       faculties
     );
     dispatch(setUsers([...users, newUser]));
-    await dataApi.createUser(newUser).catch(() => null);
+    const createdRemote = await dataApi
+      .createUser({
+        ...newUser,
+        password: form.password || 'demo123',
+      })
+      .catch((error) => {
+        setRequestError(error.message || 'Не удалось создать пользователя');
+        return null;
+      });
+    if (createdRemote?.id) {
+      dispatch(
+        setUsers([
+          ...users.filter((u) => u.id !== newUser.id && u.id !== createdRemote.id),
+          migrateUser(createdRemote, faculties),
+        ])
+      );
+    }
     setForm({
       email: '',
       password: 'demo123',
@@ -141,64 +241,21 @@ export default function Users() {
       firstName: '',
       middleName: '',
     });
+    setHasNoMiddleName(false);
   };
 
   const removeUser = async (id) => {
+    if (id === currentUser?.id) {
+      alert('Нельзя удалить текущего администратора');
+      return;
+    }
     if (!confirm('Удалить пользователя?')) return;
     dispatch(setUsers(users.filter((u) => u.id !== id)));
-    await dataApi.deleteUser(id).catch(() => null);
-  };
-
-  const updateRole = async (id, role) => {
-    dispatch(
-      setUsers(
-        users.map((u) =>
-          u.id === id
-            ? migrateUser(
-                {
-                  ...u,
-                  role,
-                  permissions:
-                    role === ROLES.COMMISSION
-                      ? u.permissions || {
-                          canEditRegulations: false,
-                          canEditDirections: false,
-                          canEditScoringMatrix: false,
-                          allowedDirectionIds: [],
-                        }
-                      : null,
-                  facultyId: role === ROLES.STUDENT ? u.facultyId : null,
-                  group: role === ROLES.STUDENT ? u.group : null,
-                  recordBookNumber: role === ROLES.STUDENT ? u.recordBookNumber : null,
-                  studentCardNumber: role === ROLES.STUDENT ? u.studentCardNumber : null,
-                },
-                faculties
-              )
-            : u
-        )
-      )
-    );
-    const changed = users.find((u) => u.id === id);
-    if (changed) {
-      await dataApi
-        .updateUser(id, {
-          role,
-          permissions:
-            role === ROLES.COMMISSION
-              ? changed.permissions || {
-                  canEditRegulations: false,
-                  canEditDirections: false,
-                  canEditScoringMatrix: false,
-                  allowedDirectionIds: [],
-                }
-              : null,
-          facultyId: role === ROLES.STUDENT ? changed.facultyId : null,
-          group: role === ROLES.STUDENT ? changed.group : null,
-          recordBookNumber: role === ROLES.STUDENT ? changed.recordBookNumber : null,
-          studentCardNumber: role === ROLES.STUDENT ? changed.studentCardNumber : null,
-        })
-        .catch(() => null);
-    }
+    setRequestError('');
+    await dataApi.deleteUser(id).catch((error) => {
+      setRequestError(error.message || 'Не удалось удалить пользователя');
+      return null;
+    });
   };
 
   const facultyGroups = (facultyId) =>
@@ -207,16 +264,32 @@ export default function Users() {
   return (
     <DashboardLayout sidebarItems={adminSidebar} sidebarTitle="Администрирование">
       <header className="page-header">
-        <h1>Пользователи</h1>
+        <h1>
+          {mode === ROLES.STUDENT
+            ? 'Студенты'
+            : mode === ROLES.COMMISSION
+              ? 'Члены комиссии'
+              : 'Администраторы'}
+        </h1>
         <p>
-          Учётные записи. Для студентов факультет, группа (формат ЭЭ-22), зачётная книжка и
-          студенческий билет задаются здесь.
+          {mode === ROLES.STUDENT
+            ? 'Учётные записи студентов. Факультет, группа, зачётная книжка и студенческий билет задаются здесь.'
+            : mode === ROLES.COMMISSION
+              ? 'Учётные записи членов комиссии и их полномочия.'
+              : 'Учётные записи администраторов системы.'}
         </p>
       </header>
+      {requestError && <div className="alert alert--error">{requestError}</div>}
 
       <div className="card editor-block">
-        <h3 style={{ marginTop: 0 }}>Добавить пользователя</h3>
-        <form className="inline-form" onSubmit={addUser}>
+        <h3 style={{ marginTop: 0 }}>
+          {mode === ROLES.STUDENT
+            ? 'Добавить студента'
+            : mode === ROLES.COMMISSION
+              ? 'Добавить члена комиссии'
+              : 'Добавить администратора'}
+        </h3>
+        <form className="inline-form inline-form--users" onSubmit={addUser}>
           <div className="form-group">
             <label>Email</label>
             <input
@@ -230,7 +303,9 @@ export default function Users() {
             <label>Фамилия</label>
             <input
               value={form.lastName}
-              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, lastName: sanitizePersonNameInput(e.target.value) })
+              }
               required
             />
           </div>
@@ -238,24 +313,46 @@ export default function Users() {
             <label>Имя</label>
             <input
               value={form.firstName}
-              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, firstName: sanitizePersonNameInput(e.target.value) })
+              }
               required
             />
           </div>
           <div className="form-group">
-            <label>Роль</label>
-            <select
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+            <label>Отчество</label>
+            <input
+              value={form.middleName}
+              onChange={(e) =>
+                setForm({ ...form, middleName: sanitizePersonNameInput(e.target.value) })
+              }
+              disabled={hasNoMiddleName}
+            />
+            <label
+              className="form-group__checkbox"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                marginTop: '0.45rem',
+              }}
             >
-              {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
+              <input
+                type="checkbox"
+                checked={hasNoMiddleName}
+                onChange={(e) => {
+                  setHasNoMiddleName(e.target.checked);
+                  if (e.target.checked) setForm({ ...form, middleName: '' });
+                }}
+              />
+              Нет отчества
+            </label>
           </div>
-          <button type="submit" className="btn btn--primary btn--sm">
+          <div className="form-group">
+            <label>Роль</label>
+            <input value={ROLE_LABELS[mode]} disabled />
+          </div>
+          <button type="submit" className="btn btn--primary btn--sm inline-form__submit">
             Добавить
           </button>
         </form>
@@ -265,15 +362,50 @@ export default function Users() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>ФИО</th>
-              <th>Email</th>
-              <th>Факультет / группа</th>
-              <th>Роль</th>
+              <th>
+                <SortableHeader
+                  label="ФИО"
+                  sortKey="fullName"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
+              <th>
+                <SortableHeader
+                  label="Email"
+                  sortKey="email"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
+              <th>
+                <SortableHeader
+                  label="Факультет / группа"
+                  sortKey="facultyGroup"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
+              <th>
+                <SortableHeader
+                  label="Роль"
+                  sortKey="role"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
               <th>Действия</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {sortedUsers.length === 0 && (
+              <tr>
+                <td colSpan={5} className="empty-state">
+                  Список пуст
+                </td>
+              </tr>
+            )}
+            {sortedUsers.map((u) => (
               <Fragment key={u.id}>
                 <tr>
                   <td>{formatFullName(u)}</td>
@@ -291,36 +423,33 @@ export default function Users() {
                       '—'
                     )}
                   </td>
-                  <td>
-                    <select
-                      value={u.role}
-                      onChange={(e) => updateRole(u.id, e.target.value)}
-                    >
-                      {Object.entries(ROLE_LABELS).map(([k, v]) => (
-                        <option key={k} value={k}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                  <td>{ROLE_LABELS[u.role]}</td>
                   <td>
                     <div className="table-actions">
-                      {(u.role === ROLES.STUDENT || u.role === ROLES.COMMISSION) && (
+                      {(u.role === ROLES.STUDENT ||
+                        u.role === ROLES.COMMISSION ||
+                        u.role === ROLES.ADMIN) && (
                         <button
                           type="button"
                           className="btn btn--ghost btn--sm"
                           onClick={() => startEdit(u)}
                         >
-                          {u.role === ROLES.STUDENT ? 'Учёба' : 'Полномочия'}
+                          {u.role === ROLES.STUDENT
+                            ? 'Учёба'
+                            : u.role === ROLES.COMMISSION
+                              ? 'Полномочия'
+                              : 'Настройки'}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="btn btn--danger btn--sm"
-                        onClick={() => removeUser(u.id)}
-                      >
-                        Удалить
-                      </button>
+                      {u.id !== currentUser?.id && (
+                        <button
+                          type="button"
+                          className="btn btn--danger btn--sm"
+                          onClick={() => removeUser(u.id)}
+                        >
+                          Удалить
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -331,6 +460,66 @@ export default function Users() {
                         {u.role === ROLES.STUDENT && (
                           <>
                             <h4>Учебные данные студента</h4>
+                            <div className="form-row form-row--3">
+                              <div className="form-group">
+                                <label>Фамилия</label>
+                                <input
+                                  value={editForm.lastName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      lastName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Имя</label>
+                                <input
+                                  value={editForm.firstName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      firstName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Отчество</label>
+                                <input
+                                  value={editForm.middleName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      middleName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                  disabled={editForm.hasNoMiddleName}
+                                />
+                                <label
+                                  style={{
+                                    marginTop: '0.4rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={editForm.hasNoMiddleName}
+                                    onChange={(e) =>
+                                      setEditForm({
+                                        ...editForm,
+                                        hasNoMiddleName: e.target.checked,
+                                        middleName: e.target.checked ? '' : editForm.middleName,
+                                      })
+                                    }
+                                  />
+                                  Нет отчества
+                                </label>
+                              </div>
+                            </div>
                             <div className="form-row form-row--2">
                               <div className="form-group">
                                 <label>Факультет</label>
@@ -400,6 +589,66 @@ export default function Users() {
                         {u.role === ROLES.COMMISSION && (
                           <>
                             <h4>Полномочия члена комиссии</h4>
+                            <div className="form-row form-row--3">
+                              <div className="form-group">
+                                <label>Фамилия</label>
+                                <input
+                                  value={editForm.lastName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      lastName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Имя</label>
+                                <input
+                                  value={editForm.firstName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      firstName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Отчество</label>
+                                <input
+                                  value={editForm.middleName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      middleName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                  disabled={editForm.hasNoMiddleName}
+                                />
+                                <label
+                                  style={{
+                                    marginTop: '0.4rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={editForm.hasNoMiddleName}
+                                    onChange={(e) =>
+                                      setEditForm({
+                                        ...editForm,
+                                        hasNoMiddleName: e.target.checked,
+                                        middleName: e.target.checked ? '' : editForm.middleName,
+                                      })
+                                    }
+                                  />
+                                  Нет отчества
+                                </label>
+                              </div>
+                            </div>
                             <label style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                               <input
                                 type="checkbox"
@@ -446,7 +695,7 @@ export default function Users() {
                                   })
                                 }
                               />
-                              Право изменять матрицу баллов
+                              Право изменять уровни достижений
                             </label>
                             <div className="form-group">
                               <label>Направления для оценки</label>
@@ -478,6 +727,70 @@ export default function Users() {
                                     </button>
                                   );
                                 })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {u.role === ROLES.ADMIN && (
+                          <>
+                            <div className="form-row form-row--3">
+                              <div className="form-group">
+                                <label>Фамилия</label>
+                                <input
+                                  value={editForm.lastName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      lastName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Имя</label>
+                                <input
+                                  value={editForm.firstName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      firstName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                />
+                              </div>
+                              <div className="form-group">
+                                <label>Отчество</label>
+                                <input
+                                  value={editForm.middleName}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      middleName: sanitizePersonNameInput(e.target.value),
+                                    })
+                                  }
+                                  disabled={editForm.hasNoMiddleName}
+                                />
+                                <label
+                                  style={{
+                                    marginTop: '0.4rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={editForm.hasNoMiddleName}
+                                    onChange={(e) =>
+                                      setEditForm({
+                                        ...editForm,
+                                        hasNoMiddleName: e.target.checked,
+                                        middleName: e.target.checked ? '' : editForm.middleName,
+                                      })
+                                    }
+                                  />
+                                  Нет отчества
+                                </label>
                               </div>
                             </div>
                           </>

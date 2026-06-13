@@ -6,9 +6,7 @@ import App from './App';
 import { store } from './store/store';
 import { reloadData } from './store/dataSlice';
 import { updateProfile } from './store/authSlice';
-import { setNotifications } from './store/dataSlice';
 import { migrateUser } from './utils/migrateUser';
-import { ensureDeadlineNotifications } from './utils/deadlines';
 import './styles/global.css';
 import './styles/navbar.css';
 import './styles/sidebar.css';
@@ -17,23 +15,17 @@ import './styles/forms.css';
 import './styles/tables.css';
 
 async function bootstrap() {
-  await store.dispatch(reloadData());
+  try {
+    await store.dispatch(reloadData());
+  } catch {
+    // Backend is required in API-only mode; UI can still render and show auth errors.
+  }
   const boot = store.getState();
   if (boot.auth.user) {
     store.dispatch(
       updateProfile(migrateUser(boot.auth.user, boot.data.faculties))
     );
   }
-  const after = store.getState();
-  store.dispatch(
-    setNotifications(
-      ensureDeadlineNotifications(
-        after.data.users,
-        after.data.notifications,
-        after.data.regulations
-      )
-    )
-  );
 }
 
 bootstrap();

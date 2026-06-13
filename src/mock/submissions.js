@@ -1,16 +1,7 @@
-import { SUBMISSION_STATUS } from '../constants/submissions';
-import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
+import { SUBMISSION_STATUS } from '../constants/submissions.js';
+import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions.js';
 
 export const initialSubmissions = [
-  {
-    id: 'sub-u1',
-    userId: 'u1',
-    academicYear: CURRENT_ACADEMIC_YEAR,
-    status: SUBMISSION_STATUS.SUBMITTED,
-    submittedAt: '2025-10-02T09:00:00.000Z',
-    createdAt: '2025-09-15T10:00:00.000Z',
-    updatedAt: '2025-10-02T09:00:00.000Z',
-  },
   {
     id: 'sub-u2',
     userId: 'u2',
@@ -28,5 +19,50 @@ export const initialSubmissions = [
     submittedAt: '2025-09-12T11:00:00.000Z',
     createdAt: '2025-09-10T08:00:00.000Z',
     updatedAt: '2025-09-12T11:00:00.000Z',
+  },
+  {
+    id: 'sub-u6',
+    userId: 'u6',
+    academicYear: CURRENT_ACADEMIC_YEAR,
+    status: SUBMISSION_STATUS.SUBMITTED,
+    submittedAt: '2025-10-10T11:00:00.000Z',
+    createdAt: '2025-10-08T08:30:00.000Z',
+    updatedAt: '2025-10-10T11:00:00.000Z',
+  },
+  {
+    id: 'sub-u7',
+    userId: 'u7',
+    academicYear: CURRENT_ACADEMIC_YEAR,
+    status: SUBMISSION_STATUS.APPROVED,
+    submittedAt: '2025-09-20T09:45:00.000Z',
+    createdAt: '2025-09-18T07:15:00.000Z',
+    updatedAt: '2025-09-22T14:20:00.000Z',
+  },
+  {
+    id: 'sub-u8',
+    userId: 'u8',
+    academicYear: CURRENT_ACADEMIC_YEAR,
+    status: SUBMISSION_STATUS.SUBMITTED,
+    submittedAt: '2025-10-05T15:20:00.000Z',
+    createdAt: '2025-10-01T10:00:00.000Z',
+    updatedAt: '2025-10-05T15:20:00.000Z',
+  },
+  {
+    id: 'sub-u9',
+    userId: 'u9',
+    academicYear: CURRENT_ACADEMIC_YEAR,
+    status: SUBMISSION_STATUS.APPROVED,
+    submittedAt: '2025-09-25T12:10:00.000Z',
+    createdAt: '2025-09-22T09:05:00.000Z',
+    updatedAt: '2025-09-28T17:45:00.000Z',
+  },
+  {
+    id: 'sub-u10',
+    userId: 'u10',
+    academicYear: CURRENT_ACADEMIC_YEAR,
+    status: SUBMISSION_STATUS.REVISION,
+    submittedAt: '2025-10-12T13:30:00.000Z',
+    createdAt: '2025-10-10T09:20:00.000Z',
+    updatedAt: '2025-10-13T10:15:00.000Z',
   },
 ];

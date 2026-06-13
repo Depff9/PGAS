@@ -18,4 +18,23 @@ router.get('/', requireRoles('admin', 'commission'), async (_req, res, next) => 
   }
 });
 
+router.post('/', requireRoles('admin', 'commission'), async (req, res, next) => {
+  try {
+    const payload = req.body || {};
+    const entry = await prisma.historyEntry.create({
+      data: {
+        id: payload.id || `h${Date.now()}`,
+        action: payload.action || 'update',
+        entity: payload.category || payload.entity || 'general',
+        payload: payload,
+        createdBy: req.auth.id,
+        createdAt: payload.createdAt ? new Date(payload.createdAt) : new Date(),
+      },
+    });
+    res.status(201).json(entry);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

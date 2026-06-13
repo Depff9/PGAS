@@ -1,4 +1,4 @@
-import { NOTIFICATION_TYPES } from '../utils/notifications';
+import { NOTIFICATION_TYPES } from '../utils/notifications.js';
 
 export const initialNotifications = [
   {

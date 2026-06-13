@@ -7,6 +7,7 @@ import { UNIVERSITY } from '../config/university';
 import { registerApi } from '../api/authApi';
 import { loginSuccess } from '../store/authSlice';
 import { reloadData } from '../store/dataSlice';
+import { isValidPersonName, sanitizePersonNameInput } from '../utils/personName';
 
 export default function Register() {
   const dispatch = useAppDispatch();
@@ -20,8 +21,16 @@ export default function Register() {
     password: '',
     confirm: '',
   });
+  const [hasNoMiddleName, setHasNoMiddleName] = useState(false);
 
-  const set = (field) => (e) => setForm({ ...form, [field]: e.target.value });
+  const set = (field) => (e) =>
+    setForm({
+      ...form,
+      [field]:
+        field === 'lastName' || field === 'firstName' || field === 'middleName'
+          ? sanitizePersonNameInput(e.target.value)
+          : e.target.value,
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,13 +43,21 @@ export default function Register() {
       setError('Пароль должен быть не короче 6 символов');
       return;
     }
+    if (!isValidPersonName(form.lastName) || !isValidPersonName(form.firstName)) {
+      setError('Фамилия и имя должны содержать только русские буквы (допустим дефис)');
+      return;
+    }
+    if (!hasNoMiddleName && form.middleName.trim() && !isValidPersonName(form.middleName)) {
+      setError('Отчество должно содержать только русские буквы (допустим дефис)');
+      return;
+    }
     try {
       const user = await registerApi({
         email: form.email,
         password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
-        middleName: form.middleName,
+        middleName: hasNoMiddleName ? '' : form.middleName,
       });
       dispatch(loginSuccess(user));
       await dispatch(reloadData());
@@ -82,7 +99,18 @@ export default function Register() {
                 <label>
                   Отчество <TooltipInfo fieldKey="register.middleName" />
                 </label>
-                <input value={form.middleName} onChange={set('middleName')} />
+                <input value={form.middleName} onChange={set('middleName')} disabled={hasNoMiddleName} />
+                <label style={{ marginTop: '0.4rem', display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={hasNoMiddleName}
+                    onChange={(e) => {
+                      setHasNoMiddleName(e.target.checked);
+                      if (e.target.checked) setForm({ ...form, middleName: '' });
+                    }}
+                  />
+                  Нет отчества
+                </label>
               </div>
             </div>
             <div className="form-group">

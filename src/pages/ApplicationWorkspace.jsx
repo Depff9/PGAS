@@ -17,6 +17,18 @@ import {
 import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
 import { dataApi } from '../api/dataApi';
 
+function getDeadlineLabel(regulations) {
+  const section = regulations?.sections?.find((s) => s.id === 'r2');
+  const content = section?.content || '';
+  const winter = content.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  const summer = content.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
+  if (winter && summer) return `${winter} / ${summer}`;
+  const explicit = content.match(/до\s+(\d{1,2}\s+\S+)/i)?.[1];
+  if (explicit) return explicit;
+  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
+  return allDates.at(-1) || 'даты из регламента';
+}
+
 function cellClass(status) {
   if (!status) return 'matrix-cell matrix-cell--empty';
   return `matrix-cell matrix-cell--${status}`;
@@ -29,8 +41,10 @@ export default function ApplicationWorkspace() {
   const submissions = useAppSelector((s) => s.data.submissions);
   const directions = useAppSelector((s) => s.data.directions).filter((d) => d.active);
   const regulations = useAppSelector((s) => s.data.regulations);
+  const deadlineIso = useAppSelector((s) => s.data.meta?.deadlineIso);
 
   const [modal, setModal] = useState(null);
+  const [requestError, setRequestError] = useState('');
 
   const submission = useMemo(() => {
     let sub = getStudentSubmission(submissions, user?.id);
@@ -41,6 +55,9 @@ export default function ApplicationWorkspace() {
   const myAchievements = submission
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
+  const isDeadlineReached = deadlineIso ? new Date(deadlineIso).getTime() < Date.now() : false;
+  const canEdit = !isDeadlineReached;
+  const deadlineLabel = getDeadlineLabel(regulations);
 
   if (!user?.facultyId || !user?.group) {
     return (
@@ -57,14 +74,19 @@ export default function ApplicationWorkspace() {
 
   const ensureSubmission = async () => {
     if (submissions.find((s) => s.id === submission.id)) return submission;
-    const created = await dataApi
-      .createSubmission({ academicYear: CURRENT_ACADEMIC_YEAR, status: 'draft' })
-      .catch(() => submission);
+    const created = await dataApi.createSubmission({
+      academicYear: CURRENT_ACADEMIC_YEAR,
+      status: 'draft',
+    });
     dispatch(setSubmissions([...submissions, created]));
     return created;
   };
 
   const openCell = async (directionId, slotIndex) => {
+    if (!canEdit) {
+      alert('Окончание сроков подачи наступило. Изменение достижений недоступно.');
+      return;
+    }
     const sub = await ensureSubmission();
     const existing = getAchievementAt(myAchievements, sub.id, directionId, slotIndex);
     const direction = directions.find((d) => d.id === directionId);
@@ -107,31 +129,66 @@ export default function ApplicationWorkspace() {
   };
 
   const handleSave = async (item) => {
-    const sub = await ensureSubmission();
+    if (!canEdit) return;
+    setRequestError('');
+    let sub = submission;
+    try {
+      sub = await ensureSubmission();
+    } catch (error) {
+      setRequestError(error.message || 'Не удалось создать заявление');
+      return;
+    }
+    const existing = myAchievements.find((a) => a.id === item.id);
+    const isNew = !existing;
+    const existingSubmittedLocked = existing?.status === 'submitted';
+    if (existingSubmittedLocked && item.status !== 'revision') {
+      alert('Поданное достижение нельзя изменить до возврата на правки.');
+      setModal(null);
+      return;
+    }
     const withScore = {
       ...item,
       submissionId: sub.id,
       userId: user.id,
       id: item.id || 'ach' + Date.now(),
       score: 0,
+      status:
+        existingSubmittedLocked && existing?.status === 'submitted'
+          ? 'submitted'
+          : item.status,
     };
     const next = upsertAchievement(myAchievements, withScore);
     persist(next, sub);
-    if (item.id) {
+    if (!isNew && existingSubmittedLocked) {
       await dataApi.updateAchievement(item.id, withScore).catch(() => null);
+    } else if (item.id) {
+      await dataApi.updateAchievement(item.id, withScore);
     } else {
-      await dataApi.createAchievement(withScore).catch(() => null);
+      await dataApi.createAchievement(withScore);
     }
     setModal(null);
   };
 
   const handleDelete = async () => {
+    if (!canEdit) return;
     if (!modal?.achievement?.id) return;
+    if (modal.achievement.status === 'submitted') {
+      alert('Поданное достижение нельзя удалить до возврата на правки.');
+      setModal(null);
+      return;
+    }
     if (!confirm('Удалить достижение?')) return;
-    const sub = await ensureSubmission();
+    setRequestError('');
+    let sub = submission;
+    try {
+      sub = await ensureSubmission();
+    } catch (error) {
+      setRequestError(error.message || 'Не удалось подготовить удаление');
+      return;
+    }
     const next = removeAchievement(myAchievements, modal.achievement.id);
     persist(next, sub);
-    await dataApi.deleteAchievement(modal.achievement.id).catch(() => null);
+    await dataApi.deleteAchievement(modal.achievement.id);
     setModal(null);
   };
 
@@ -146,6 +203,14 @@ export default function ApplicationWorkspace() {
             <Link to="/regulations">регламенте</Link>.
           </p>
         </header>
+
+        {isDeadlineReached && (
+          <div className="alert alert--info">
+            Окончание сроков подачи ({deadlineLabel}) наступило. Достижения зафиксированы и
+            недоступны для изменения.
+          </div>
+        )}
+        {requestError && <div className="alert alert--error">{requestError}</div>}
 
         <div className="form-actions" style={{ marginBottom: '1rem' }}>
           <Link to="/applications" className="btn btn--ghost btn--sm">
@@ -188,6 +253,7 @@ export default function ApplicationWorkspace() {
                               type="button"
                               className={cellClass(ach?.status)}
                               onClick={() => openCell(d.id, slot)}
+                              disabled={!canEdit}
                             >
                               {ach ? (
                                 <>
@@ -218,7 +284,7 @@ export default function ApplicationWorkspace() {
           direction={modal.direction}
           onClose={() => setModal(null)}
           onSave={handleSave}
-          onDelete={modal.achievement.id ? handleDelete : null}
+          onDelete={canEdit && modal.achievement.id ? handleDelete : null}
         />
       )}
     </div>

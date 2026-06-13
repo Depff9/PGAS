@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { adminSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setGroups } from '../store/dataSlice';
 import { dataApi } from '../api/dataApi';
+import SortableHeader from '../components/SortableHeader';
+import { sortBySelectors, toggleSortState } from '../utils/tableSort';
 
 export default function Groups() {
   const dispatch = useAppDispatch();
@@ -11,6 +13,7 @@ export default function Groups() {
   const faculties = useAppSelector((s) => s.data.faculties);
   const [name, setName] = useState('');
   const [facultyId, setFacultyId] = useState(faculties[0]?.id || '');
+  const [sortState, setSortState] = useState({ key: 'name', dir: 'asc' });
 
   const add = async (e) => {
     e.preventDefault();
@@ -26,6 +29,14 @@ export default function Groups() {
   };
 
   const facultyName = (id) => faculties.find((f) => f.id === id)?.name || '—';
+  const sortedGroups = useMemo(
+    () =>
+      sortBySelectors(groups, sortState, {
+        name: (g) => g.name,
+        faculty: (g) => facultyName(g.facultyId),
+      }),
+    [groups, sortState, faculties]
+  );
 
   return (
     <DashboardLayout sidebarItems={adminSidebar} sidebarTitle="Администрирование">
@@ -60,13 +71,27 @@ export default function Groups() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Группа</th>
-              <th>Факультет</th>
+              <th>
+                <SortableHeader
+                  label="Группа"
+                  sortKey="name"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
+              <th>
+                <SortableHeader
+                  label="Факультет"
+                  sortKey="faculty"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {groups.map((g) => (
+            {sortedGroups.map((g) => (
               <tr key={g.id}>
                 <td>{g.name}</td>
                 <td>{facultyName(g.facultyId)}</td>

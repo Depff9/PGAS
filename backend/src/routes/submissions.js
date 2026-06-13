@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError } from '../utils/http.js';
+import { assertDeadlineOpen } from '../utils/deadline.js';
 
 const router = Router();
 
@@ -46,6 +47,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', requireRoles('student'), async (req, res, next) => {
   try {
+    assertDeadlineOpen();
     const body = req.body || {};
     const existing = await prisma.submission.findFirst({
       where: {
@@ -86,6 +88,36 @@ router.patch('/:id/status', requireRoles('commission', 'admin'), async (req, res
         submittedAt: status === 'submitted' ? new Date() : undefined,
       },
     });
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
+  try {
+    assertDeadlineOpen();
+    const { id } = req.params;
+    const submission = await prisma.submission.findUnique({ where: { id } });
+    if (!submission) throw createHttpError(404, 'Заявка не найдена');
+    if (submission.userId !== req.auth.id) throw createHttpError(403, 'Нет доступа к заявке');
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.achievement.updateMany({
+        where: { submissionId: id, userId: req.auth.id, status: 'draft' },
+        data: { status: 'submitted', updatedAt: new Date() },
+      });
+
+      return tx.submission.update({
+        where: { id },
+        data: {
+          status: 'submitted',
+          submittedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+    });
+
     res.json(updated);
   } catch (error) {
     next(error);

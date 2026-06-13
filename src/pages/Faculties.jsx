@@ -1,15 +1,26 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { adminSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setFaculties } from '../store/dataSlice';
 import { dataApi } from '../api/dataApi';
+import SortableHeader from '../components/SortableHeader';
+import { sortBySelectors, toggleSortState } from '../utils/tableSort';
 
 export default function Faculties() {
   const dispatch = useAppDispatch();
   const faculties = useAppSelector((s) => s.data.faculties);
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
+  const [sortState, setSortState] = useState({ key: 'name', dir: 'asc' });
+  const sortedFaculties = useMemo(
+    () =>
+      sortBySelectors(faculties, sortState, {
+        name: (f) => f.name,
+        shortName: (f) => f.shortName,
+      }),
+    [faculties, sortState]
+  );
 
   const add = async (e) => {
     e.preventDefault();
@@ -66,13 +77,27 @@ export default function Faculties() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Название</th>
-              <th>Краткое имя</th>
+              <th>
+                <SortableHeader
+                  label="Название"
+                  sortKey="name"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
+              <th>
+                <SortableHeader
+                  label="Краткое имя"
+                  sortKey="shortName"
+                  sortState={sortState}
+                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
+                />
+              </th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {faculties.map((f) => (
+            {sortedFaculties.map((f) => (
               <tr key={f.id}>
                 <td>
                   <input

@@ -63,8 +63,13 @@ export function hydrateAchievements(raw, _directions, _matrix, submissionsSeed) 
   const stored = raw.achievements ?? raw.applications;
   if (!stored?.length) {
     return {
-      achievements: initialAchievements,
-      submissions: submissionsSeed?.length ? submissionsSeed : initialSubmissions,
+      achievements: raw.achievements ? [] : initialAchievements,
+      submissions:
+        submissionsSeed?.length
+          ? submissionsSeed
+          : raw.submissions
+            ? []
+            : initialSubmissions,
     };
   }
 
