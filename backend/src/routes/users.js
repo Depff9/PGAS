@@ -9,7 +9,7 @@ const router = Router();
 
 router.use(authRequired);
 
-router.get('/', async (_req, res, next) => {
+router.get('/', requireRoles('admin', 'commission'), async (_req, res, next) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: [{ role: 'asc' }, { lastName: 'asc' }],

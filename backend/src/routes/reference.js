@@ -29,7 +29,7 @@ router.get('/public', async (_req, res, next) => {
   }
 });
 
-router.get('/students', async (_req, res, next) => {
+router.get('/students', authRequired, requireRoles('admin', 'commission'), async (_req, res, next) => {
   try {
     const students = await prisma.user.findMany({
       where: { role: 'student' },
@@ -72,9 +72,9 @@ router.get('/rating', authRequired, async (_req, res, next) => {
       prisma.achievement.findMany({
         where: {
           status: { in: ['submitted', 'approved', 'revision'] },
-          title: { not: '' },
+          title: { not: null },
         },
-        select: { userId: true, score: true, finalScore: true },
+        select: { userId: true, title: true, score: true, finalScore: true },
       }),
     ]);
 
@@ -83,6 +83,8 @@ router.get('/rating', authRequired, async (_req, res, next) => {
     const countByUser = new Map();
 
     achievements.forEach((item) => {
+      const normalizedTitle = String(item.title || '').trim();
+      if (!normalizedTitle) return;
       submittedUserIds.add(item.userId);
       const score = Number(item.finalScore ?? item.score ?? 0);
       scoreByUser.set(item.userId, (scoreByUser.get(item.userId) || 0) + score);
