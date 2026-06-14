@@ -67,8 +67,28 @@ export default function Users() {
     middleName: '',
   });
   const [hasNoMiddleName, setHasNoMiddleName] = useState(false);
+  const [middleNameDraft, setMiddleNameDraft] = useState('');
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(null);
+  const [editMiddleNameDraft, setEditMiddleNameDraft] = useState('');
+  const toggleEditMiddleName = (checked) => {
+    if (!editForm) return;
+    if (checked) {
+      setEditMiddleNameDraft(editForm.middleName);
+      setEditForm({
+        ...editForm,
+        hasNoMiddleName: true,
+        middleName: '',
+      });
+      return;
+    }
+    setEditForm({
+      ...editForm,
+      hasNoMiddleName: false,
+      middleName: editMiddleNameDraft,
+    });
+    setEditMiddleNameDraft('');
+  };
 
   const startEdit = (u) => {
     setEditId(u.id);
@@ -88,6 +108,7 @@ export default function Users() {
         allowedDirectionIds: u.permissions?.allowedDirectionIds || [],
       },
     });
+    setEditMiddleNameDraft('');
   };
 
   const saveEdit = async () => {
@@ -177,6 +198,7 @@ export default function Users() {
     await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
     setEditId(null);
     setEditForm(null);
+    setEditMiddleNameDraft('');
   };
 
   const addUser = async (e) => {
@@ -242,6 +264,7 @@ export default function Users() {
       middleName: '',
     });
     setHasNoMiddleName(false);
+    setMiddleNameDraft('');
   };
 
   const removeUser = async (id) => {
@@ -341,8 +364,15 @@ export default function Users() {
                 type="checkbox"
                 checked={hasNoMiddleName}
                 onChange={(e) => {
-                  setHasNoMiddleName(e.target.checked);
-                  if (e.target.checked) setForm({ ...form, middleName: '' });
+                  const checked = e.target.checked;
+                  setHasNoMiddleName(checked);
+                  if (checked) {
+                    setMiddleNameDraft(form.middleName);
+                    setForm({ ...form, middleName: '' });
+                  } else {
+                    setForm({ ...form, middleName: middleNameDraft });
+                    setMiddleNameDraft('');
+                  }
                 }}
               />
               Нет отчества
@@ -508,13 +538,7 @@ export default function Users() {
                                   <input
                                     type="checkbox"
                                     checked={editForm.hasNoMiddleName}
-                                    onChange={(e) =>
-                                      setEditForm({
-                                        ...editForm,
-                                        hasNoMiddleName: e.target.checked,
-                                        middleName: e.target.checked ? '' : editForm.middleName,
-                                      })
-                                    }
+                                    onChange={(e) => toggleEditMiddleName(e.target.checked)}
                                   />
                                   Нет отчества
                                 </label>
@@ -637,13 +661,7 @@ export default function Users() {
                                   <input
                                     type="checkbox"
                                     checked={editForm.hasNoMiddleName}
-                                    onChange={(e) =>
-                                      setEditForm({
-                                        ...editForm,
-                                        hasNoMiddleName: e.target.checked,
-                                        middleName: e.target.checked ? '' : editForm.middleName,
-                                      })
-                                    }
+                                    onChange={(e) => toggleEditMiddleName(e.target.checked)}
                                   />
                                   Нет отчества
                                 </label>
@@ -781,13 +799,7 @@ export default function Users() {
                                   <input
                                     type="checkbox"
                                     checked={editForm.hasNoMiddleName}
-                                    onChange={(e) =>
-                                      setEditForm({
-                                        ...editForm,
-                                        hasNoMiddleName: e.target.checked,
-                                        middleName: e.target.checked ? '' : editForm.middleName,
-                                      })
-                                    }
+                                    onChange={(e) => toggleEditMiddleName(e.target.checked)}
                                   />
                                   Нет отчества
                                 </label>

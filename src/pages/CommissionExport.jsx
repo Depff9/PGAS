@@ -34,6 +34,14 @@ export default function CommissionExport() {
     [rows]
   );
   const selectedColumns = columnDefs.filter((c) => enabledColumns.includes(c.id));
+  const canExport = selectedColumns.length > 0;
+  const exportGuard = (fn) => {
+    if (!canExport) {
+      alert('Выберите хотя бы одно поле для экспорта');
+      return;
+    }
+    fn();
+  };
 
   return (
     <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
@@ -71,10 +79,12 @@ export default function CommissionExport() {
             type="button"
             className="btn btn--primary"
             onClick={() =>
-              downloadXlsx(
+              exportGuard(() =>
+                downloadXlsx(
                 `pgas-vedomost-${new Date().toISOString().slice(0, 10)}.xlsx`,
                 filteredRows,
                 selectedColumns
+                )
               )
             }
           >
@@ -83,7 +93,7 @@ export default function CommissionExport() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => printPdfReport(filteredRows, selectedColumns)}
+            onClick={() => exportGuard(() => printPdfReport(filteredRows, selectedColumns))}
           >
             PDF (печать)
           </button>
@@ -91,10 +101,12 @@ export default function CommissionExport() {
             type="button"
             className="btn btn--ghost"
             onClick={() =>
-              downloadDoc(
+              exportGuard(() =>
+                downloadDoc(
                 `pgas-vedomost-${new Date().toISOString().slice(0, 10)}.docx`,
                 filteredRows,
                 selectedColumns
+                )
               )
             }
           >

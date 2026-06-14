@@ -18,7 +18,7 @@ export default function TooltipInfo({ fieldKey, label }) {
   if (!tip) return null;
 
   return (
-    <span className="tooltip-info" ref={ref}>
+    <span className={'tooltip-info' + (open ? ' tooltip-info--open' : '')} ref={ref}>
       <button
         type="button"
         className="tooltip-info__btn"

@@ -183,6 +183,7 @@ function getFieldLabel(fieldKey) {
 export default function Tooltips() {
   const dispatch = useAppDispatch();
   const tooltips = useAppSelector((s) => s.data.tooltips);
+  const [requestError, setRequestError] = useState('');
   const [form, setForm] = useState({
     fieldKey: TOOLTIP_FIELD_KEYS[0].value,
     label: '',
@@ -192,34 +193,33 @@ export default function Tooltips() {
 
   const add = async (e) => {
     e.preventDefault();
+    setRequestError('');
     const existing = tooltips.find((t) => t.fieldKey === form.fieldKey);
+    const payload = {
+      fieldKey: form.fieldKey,
+      label: form.label,
+      text: form.text,
+    };
     if (existing) {
+      const updated = await dataApi
+        .createOrUpdateTooltip({ ...payload, id: existing.id })
+        .catch((error) => {
+          setRequestError(error.message || 'Не удалось сохранить подсказку');
+          return null;
+        });
+      if (!updated?.id) return;
       dispatch(
         setTooltips(
-          tooltips.map((t) =>
-            t.fieldKey === form.fieldKey
-              ? { ...t, label: form.label, text: form.text }
-              : t
-          )
+          tooltips.map((t) => (t.id === updated.id ? updated : t))
         )
       );
-      await dataApi
-        .createOrUpdateTooltip({
-          id: existing.id,
-          fieldKey: form.fieldKey,
-          label: form.label,
-          text: form.text,
-        })
-        .catch(() => null);
     } else {
-      const created = { id: 't' + Date.now(), ...form };
-      dispatch(
-        setTooltips([
-          ...tooltips,
-          created,
-        ])
-      );
-      await dataApi.createOrUpdateTooltip(created).catch(() => null);
+      const created = await dataApi.createOrUpdateTooltip(payload).catch((error) => {
+        setRequestError(error.message || 'Не удалось создать подсказку');
+        return null;
+      });
+      if (!created?.id) return;
+      dispatch(setTooltips([...tooltips, created]));
     }
     setForm({ fieldKey: TOOLTIP_FIELD_KEYS[0].value, label: '', text: '' });
   };
@@ -242,6 +242,7 @@ export default function Tooltips() {
           списка.
         </p>
       </header>
+      {requestError && <div className="alert alert--error">{requestError}</div>}
 
       <div className="card editor-block">
         <h3 style={{ marginTop: 0 }}>Добавить или обновить подсказку</h3>

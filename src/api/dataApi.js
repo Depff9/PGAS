@@ -177,6 +177,18 @@ export const dataApi = {
         body: JSON.stringify(payload),
       });
     }
+    if (payload.fieldKey) {
+      const existing = await apiRequest('/reference/tooltips');
+      const byField = Array.isArray(existing)
+        ? existing.find((tip) => tip.fieldKey === payload.fieldKey)
+        : null;
+      if (byField?.id) {
+        return apiRequest(`/reference/tooltips/${byField.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ ...payload, id: byField.id }),
+        });
+      }
+    }
     return apiRequest('/reference/tooltips', {
       method: 'POST',
       body: JSON.stringify(payload),

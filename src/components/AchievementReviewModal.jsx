@@ -21,18 +21,11 @@ export default function AchievementReviewModal({
   const [generalComment, setGeneralComment] = useState(
     achievement.revision?.generalComment || ''
   );
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
   const applyTemplate = (tpl) => {
-    const existing = revisionItems.find((i) => i.field === tpl.field);
-    if (existing) {
-      setRevisionItems(
-        revisionItems.map((i) =>
-          i.field === tpl.field ? { ...i, message: tpl.text } : i
-        )
-      );
-    } else {
-      setRevisionItems([...revisionItems, { field: tpl.field, message: tpl.text }]);
-    }
+    setRevisionItems((prev) => [...prev, { field: tpl.field, message: tpl.text }]);
+    setSelectedTemplateId('');
   };
 
   const saveWithStatus = (status, extra = {}) => {
@@ -112,17 +105,25 @@ export default function AchievementReviewModal({
 
         <div className="editor-block">
           <h4>Правки (шаблоны)</h4>
-          <div className="template-chips">
-            {revisionTemplates.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className="direction-tab"
-                onClick={() => applyTemplate(t)}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="form-group">
+            <label>Выберите шаблон</label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                setSelectedTemplateId(nextId);
+                const tpl = revisionTemplates.find((item) => item.id === nextId);
+                if (!tpl) return;
+                applyTemplate(tpl);
+              }}
+            >
+              <option value="">— выбрать шаблон —</option>
+              {revisionTemplates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </div>
           {revisionItems.map((item, idx) => (
             <div key={idx} className="form-row form-row--2" style={{ marginTop: '0.75rem' }}>

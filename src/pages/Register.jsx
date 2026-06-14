@@ -22,6 +22,7 @@ export default function Register() {
     confirm: '',
   });
   const [hasNoMiddleName, setHasNoMiddleName] = useState(false);
+  const [middleNameDraft, setMiddleNameDraft] = useState('');
 
   const set = (field) => (e) =>
     setForm({
@@ -105,8 +106,15 @@ export default function Register() {
                     type="checkbox"
                     checked={hasNoMiddleName}
                     onChange={(e) => {
-                      setHasNoMiddleName(e.target.checked);
-                      if (e.target.checked) setForm({ ...form, middleName: '' });
+                      const checked = e.target.checked;
+                      setHasNoMiddleName(checked);
+                      if (checked) {
+                        setMiddleNameDraft(form.middleName);
+                        setForm({ ...form, middleName: '' });
+                      } else {
+                        setForm({ ...form, middleName: middleNameDraft });
+                        setMiddleNameDraft('');
+                      }
                     }}
                   />
                   Нет отчества

@@ -109,7 +109,7 @@ export default function ChangeHistory() {
           </table>
         </div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap table-wrap--auto">
           <table className="data-table">
             <thead>
               <tr>
