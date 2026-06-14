@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import { commissionSidebar } from '../config/navigation';
@@ -44,6 +44,15 @@ export default function Regulations({ readOnly = false }) {
   const [deadlineError, setDeadlineError] = useState('');
   const [saved, setSaved] = useState(false);
   const [localLevels, setLocalLevels] = useState(scoringMatrix?.levels || []);
+
+  useEffect(() => {
+    if (!regulations) return;
+    setTitle(regulations.title || 'Регламент ПГАС');
+    setSections(regulations.sections || []);
+    setDirectionLimits(regulations.directionLimits || {});
+    setDefaultMax(regulations.defaultMaxPerDirection ?? 7);
+    setSubmissionDeadlines(normalizeSubmissionDeadlines(regulations));
+  }, [regulations?.updatedAt]);
 
   if (shouldRedirect) {
     return <Navigate to="/commission" replace />;

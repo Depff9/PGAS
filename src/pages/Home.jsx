@@ -4,7 +4,7 @@ import TooltipInfo from '../components/TooltipInfo';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
 import { UNIVERSITY } from '../config/university';
-import { getActiveDeadlineLabel } from '../utils/submissionDeadlines';
+import { getActiveDeadlineHomeLabel } from '../utils/submissionDeadlines';
 
 export default function Home() {
   const user = useAppSelector((s) => s.auth.user);
@@ -19,7 +19,7 @@ export default function Home() {
           ? '/application/workspace'
           : '/register';
 
-  const deadlineText = getActiveDeadlineLabel(regulations);
+  const deadlineText = getActiveDeadlineHomeLabel(regulations);
 
   return (
     <div className="app-shell">

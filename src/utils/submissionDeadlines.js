@@ -28,10 +28,41 @@ const MONTH_MAP = {
   декабря: 11,
 };
 
+const WALL_CLOCK_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+function pad(value) {
+  return String(value).padStart(2, '0');
+}
+
+function buildWallClock(year, monthIndex, day, hour, minute) {
+  return `${year}-${pad(monthIndex + 1)}-${pad(day)}T${pad(hour)}:${pad(minute)}`;
+}
+
 function getAcademicYearStartYear(referenceDate = new Date()) {
   const year = referenceDate.getFullYear();
   const month = referenceDate.getMonth();
   return month >= 8 ? year : year - 1;
+}
+
+export function normalizeEndsAt(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  if (WALL_CLOCK_RE.test(str)) return str;
+  const local = toDatetimeLocalValue(str);
+  return local || null;
+}
+
+export function wallClockToTimestamp(value, referenceDate = new Date()) {
+  if (!value) return NaN;
+  const str = String(value).trim();
+  if (WALL_CLOCK_RE.test(str)) {
+    const [datePart, timePart] = str.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hour, minute, 59, 999).getTime();
+  }
+  const ts = new Date(str).getTime();
+  return Number.isFinite(ts) ? ts : NaN;
 }
 
 export function getDefaultSubmissionDeadlines(referenceDate = new Date()) {
@@ -40,10 +71,10 @@ export function getDefaultSubmissionDeadlines(referenceDate = new Date()) {
   return {
     activePeriod: month >= 5 && month <= 7 ? SUBMISSION_PERIODS.SUMMER : SUBMISSION_PERIODS.WINTER,
     winter: {
-      endsAt: new Date(startYear + 1, 1, 10, 23, 59, 59).toISOString(),
+      endsAt: buildWallClock(startYear + 1, 1, 10, 23, 59),
     },
     summer: {
-      endsAt: new Date(startYear + 1, 6, 1, 23, 59, 59).toISOString(),
+      endsAt: buildWallClock(startYear + 1, 6, 1, 23, 59),
     },
   };
 }
@@ -57,7 +88,7 @@ function parseLegacyDeadlineToken(token) {
   const month = MONTH_MAP[match[2].toLowerCase()];
   const year = Number(match[3] || new Date().getFullYear());
   if (!Number.isFinite(day) || !Number.isFinite(year) || month == null) return null;
-  return new Date(year, month, day, 23, 59, 59).toISOString();
+  return buildWallClock(year, month, day, 23, 59);
 }
 
 function parseLegacyDeadlinesFromSection(regulations) {
@@ -85,18 +116,26 @@ export function normalizeSubmissionDeadlines(regulations) {
         source.activePeriod === SUBMISSION_PERIODS.WINTER
           ? SUBMISSION_PERIODS.WINTER
           : SUBMISSION_PERIODS.SUMMER,
-      winter: { endsAt: String(source.winter.endsAt) },
-      summer: { endsAt: String(source.summer.endsAt) },
+      winter: { endsAt: normalizeEndsAt(source.winter.endsAt) },
+      summer: { endsAt: normalizeEndsAt(source.summer.endsAt) },
     };
   }
 
   return parseLegacyDeadlinesFromSection(regulations) || getDefaultSubmissionDeadlines();
 }
 
-export function formatDeadlineLabel(iso, { withTime = true } = {}) {
+export function formatDeadlineLabel(iso, { withTime = true, dayMonthOnly = false } = {}) {
   if (!iso) return '—';
-  const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return '—';
+  const ts = wallClockToTimestamp(iso);
+  if (!Number.isFinite(ts)) return '—';
+  const date = new Date(ts);
+
+  if (dayMonthOnly) {
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+    });
+  }
 
   if (withTime) {
     return date.toLocaleString('ru-RU', {
@@ -121,34 +160,50 @@ export function getActiveDeadlineIso(regulations) {
   return active?.endsAt || null;
 }
 
-export function getActiveDeadlineLabel(regulations) {
-  return formatDeadlineLabel(getActiveDeadlineIso(regulations));
+export function getActiveDeadlineLabel(regulations, options) {
+  return formatDeadlineLabel(getActiveDeadlineIso(regulations), options);
+}
+
+export function getActiveDeadlineHomeLabel(regulations) {
+  return getActiveDeadlineLabel(regulations, { dayMonthOnly: true });
 }
 
 export function isDeadlineReached(iso, now = Date.now()) {
-  if (!iso) return false;
-  const ts = new Date(iso).getTime();
+  const ts = wallClockToTimestamp(iso);
   if (!Number.isFinite(ts)) return false;
   return now > ts;
 }
 
-export function toDatetimeLocalValue(iso) {
-  if (!iso) return '';
-  const date = new Date(iso);
+export function toDatetimeLocalValue(value) {
+  if (!value) return '';
+  const str = String(value).trim();
+  if (WALL_CLOCK_RE.test(str)) return str;
+  const date = new Date(str);
   if (!Number.isFinite(date.getTime())) return '';
-  const pad = (value) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return buildWallClock(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes()
+  );
 }
 
 export function fromDatetimeLocalValue(value) {
   if (!value) return null;
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return null;
-  return date.toISOString();
+  const str = String(value).trim();
+  if (!WALL_CLOCK_RE.test(str)) return null;
+  return str;
 }
 
 export function getMinDatetimeLocalValue(referenceDate = new Date()) {
-  return toDatetimeLocalValue(referenceDate.toISOString());
+  return toDatetimeLocalValue(buildWallClock(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    referenceDate.getHours(),
+    referenceDate.getMinutes()
+  ));
 }
 
 export function buildDeadlineSectionContent(deadlines) {
@@ -172,8 +227,8 @@ export function validateSubmissionDeadlines(deadlines, { now = Date.now() } = {}
   const normalized = normalizeSubmissionDeadlines({ submissionDeadlines: deadlines });
 
   for (const period of [SUBMISSION_PERIODS.WINTER, SUBMISSION_PERIODS.SUMMER]) {
-    const iso = normalized[period]?.endsAt;
-    if (!iso || !Number.isFinite(new Date(iso).getTime())) {
+    const value = normalized[period]?.endsAt;
+    if (!value || !Number.isFinite(wallClockToTimestamp(value))) {
       return {
         valid: false,
         message: `Укажите дату и время окончания для периода «${PERIOD_HEADINGS[period]}».`,
@@ -181,8 +236,8 @@ export function validateSubmissionDeadlines(deadlines, { now = Date.now() } = {}
     }
   }
 
-  const activeIso = normalized[normalized.activePeriod]?.endsAt;
-  if (isDeadlineReached(activeIso, now)) {
+  const activeValue = normalized[normalized.activePeriod]?.endsAt;
+  if (isDeadlineReached(activeValue, now)) {
     return {
       valid: false,
       message: `Срок текущего периода приёма («${PERIOD_HEADINGS[normalized.activePeriod]}») не может быть в прошлом.`,

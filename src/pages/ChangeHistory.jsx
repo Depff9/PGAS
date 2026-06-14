@@ -99,7 +99,6 @@ export default function ChangeHistory() {
     () =>
       sortBySelectors(archivedSubmissions, archiveSort, {
         date: (row) => new Date(row.sub.updatedAt || row.sub.createdAt).getTime(),
-        period: (row) => row.sub.academicYear || '',
         student: (row) => formatFullName(row.student),
         faculty: (row) => (row.faculty ? getFacultyLabel(row.faculty) : ''),
         group: (row) => row.student.group || '',
@@ -204,14 +203,6 @@ export default function ChangeHistory() {
                 </th>
                 <th>
                   <SortableHeader
-                    label="Период"
-                    sortKey="period"
-                    sortState={archiveSort}
-                    onToggle={(key) => setArchiveSort(toggleSortState(archiveSort, key, 'desc'))}
-                  />
-                </th>
-                <th>
-                  <SortableHeader
                     label="Студент"
                     sortKey="student"
                     sortState={archiveSort}
@@ -264,16 +255,15 @@ export default function ChangeHistory() {
             <tbody>
               {sortedArchived.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="empty-state">
+                  <td colSpan={8} className="empty-state">
                     Архив пока пуст
                   </td>
                 </tr>
               ) : (
                 sortedArchived.map(({ sub, student, faculty, achievementsCount, totalScore, isHistorical }) => (
                   <tr key={sub.id}>
-                    <td>{new Date(sub.updatedAt || sub.createdAt).toLocaleString('ru-RU')}</td>
                     <td>
-                      {sub.academicYear || '—'}
+                      {new Date(sub.updatedAt || sub.createdAt).toLocaleString('ru-RU')}
                       {isHistorical && (
                         <span className="form-hint" style={{ display: 'block' }}>
                           архив
