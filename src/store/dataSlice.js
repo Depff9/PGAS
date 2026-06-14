@@ -11,10 +11,17 @@ import { hydrateAchievements } from '../utils/migrateData';
 import { fetchBootstrapData } from '../api/dataApi';
 
 function hydrate(raw) {
+  const authenticated = Boolean(raw.authenticated);
   const faculties = raw.faculties?.length ? raw.faculties : initialFaculties;
   const directions = raw.directions?.length ? raw.directions : initialDirections;
   const scoringMatrix = raw.scoringMatrix || defaultScoringMatrix;
-  const users = migrateUsers(raw.users || initialUsers, faculties);
+  const users = raw.users?.length
+    ? migrateUsers(raw.users, faculties)
+    : raw.students?.length
+      ? migrateUsers(raw.students, faculties)
+      : authenticated
+        ? []
+        : migrateUsers(initialUsers, faculties);
   const students = migrateUsers(raw.students || [], faculties);
   const usersForRating = users.length ? users : students;
 
@@ -33,10 +40,10 @@ function hydrate(raw) {
     achievements,
     submissions,
     directions,
-    regulations: raw.regulations || initialRegulations,
+    regulations: raw.regulations || (authenticated ? null : initialRegulations),
     faculties,
-    groups: raw.groups || initialGroups,
-    tooltips: raw.tooltips || initialTooltips,
+    groups: raw.groups || (authenticated ? [] : initialGroups),
+    tooltips: raw.tooltips || (authenticated ? [] : initialTooltips),
     notifications: raw.notifications || [],
     scoringMatrix,
     history: raw.history || [],

@@ -117,7 +117,6 @@ export default function ApplicationWorkspace() {
     const merged = [...other, ...nextAchievements];
     dispatch(setAchievements(merged));
     const synced = syncSubmissionFromAchievements(sub, merged);
-    dataApi.updateSubmissionStatus(synced.id, synced.status).catch(() => null);
     const prevSubmissions = submissions;
     dispatch(
       setSubmissions(

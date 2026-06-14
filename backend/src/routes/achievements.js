@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
+import { assertCommissionDirectionAccess } from '../middleware/commission.js';
 import { createHttpError } from '../utils/http.js';
 import { assertDeadlineOpen } from '../utils/deadline.js';
+import { assertValidAttachments } from '../utils/attachments.js';
 
 const router = Router();
 
@@ -27,13 +29,16 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', requireRoles('student'), async (req, res, next) => {
   try {
-    assertDeadlineOpen();
+    await assertDeadlineOpen();
     const body = req.body || {};
     const submission = await prisma.submission.findUnique({
       where: { id: String(body.submissionId) },
     });
     if (!submission) throw createHttpError(404, 'Заявка не найдена');
     if (submission.userId !== req.auth.id) throw createHttpError(403, 'Нет доступа к заявке');
+
+    const attachments = assertValidAttachments(body.attachments ?? []);
+
     const achievement = await prisma.achievement.create({
       data: {
         id: String(body.id || `ach-${Date.now()}`),
@@ -43,12 +48,12 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
         slotIndex: Number(body.slotIndex || 0),
         title: String(body.title || ''),
         description: String(body.description || ''),
-        attachments: Array.isArray(body.attachments) ? body.attachments : [],
+        attachments,
         achievementLevel: body.achievementLevel || null,
-        status: body.status || 'draft',
-        score: body.score ?? null,
-        finalScore: body.finalScore ?? null,
-        revision: body.revision || null,
+        status: 'draft',
+        score: null,
+        finalScore: null,
+        revision: null,
       },
     });
     res.status(201).json(achievement);
@@ -68,27 +73,55 @@ router.patch('/:id', async (req, res, next) => {
     const isCommission = req.auth.role === 'commission' || req.auth.role === 'admin';
     if (!isStudentOwner && !isCommission) throw createHttpError(403, 'Нет прав на изменение');
 
+    if (isCommission) {
+      assertCommissionDirectionAccess(req.auth, existing.directionId);
+    }
+
     if (isStudentOwner) {
-      assertDeadlineOpen();
+      await assertDeadlineOpen();
       if (existing.status === 'submitted') {
         throw createHttpError(
           409,
           'Поданное достижение можно изменить только после возврата на доработку.'
         );
       }
+      if (existing.status === 'approved' || existing.status === 'rejected') {
+        throw createHttpError(409, 'Это достижение уже рассмотрено комиссией');
+      }
     }
 
     const updateData = isStudentOwner
-      ? {
-          title: body.title ?? undefined,
-          description: body.description ?? undefined,
-          attachments: body.attachments ?? undefined,
-          achievementLevel: body.achievementLevel ?? undefined,
-          status: body.status ?? undefined,
-          score: body.score ?? undefined,
-          finalScore: body.finalScore ?? undefined,
-          revision: body.revision ?? undefined,
-        }
+      ? (() => {
+          const data = {
+            title: body.title ?? undefined,
+            description: body.description ?? undefined,
+            attachments:
+              body.attachments == null ? undefined : assertValidAttachments(body.attachments),
+            achievementLevel: body.achievementLevel ?? undefined,
+          };
+
+          if (body.status == null) return data;
+
+          const nextStatus = String(body.status);
+          if (!['draft', 'submitted'].includes(nextStatus)) {
+            throw createHttpError(400, 'Недопустимый статус достижения');
+          }
+
+          if (existing.status === 'draft' && ['draft', 'submitted'].includes(nextStatus)) {
+            data.status = nextStatus;
+            return data;
+          }
+
+          if (existing.status === 'revision') {
+            data.status = nextStatus;
+            if (nextStatus === 'submitted') {
+              data.revision = null;
+            }
+            return data;
+          }
+
+          throw createHttpError(400, 'Недопустимое изменение статуса');
+        })()
       : {
           status: body.status ?? undefined,
           score: body.score ?? undefined,
@@ -116,11 +149,11 @@ router.delete('/:id', requireRoles('student', 'admin'), async (req, res, next) =
       throw createHttpError(403, 'Нет прав на удаление');
     }
     if (req.auth.role === 'student') {
-      assertDeadlineOpen();
+      await assertDeadlineOpen();
       if (existing.status === 'submitted') {
         throw createHttpError(
           409,
-          'Поданное достижение нельзя удалить до возврата на доработку.'
+          'Поданное достижение нельзя удалить до возврата на правки.'
         );
       }
     }

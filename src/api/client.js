@@ -1,6 +1,12 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'pgas_api_token';
 
+let onUnauthorized = null;
+
+export function setUnauthorizedHandler(handler) {
+  onUnauthorized = handler;
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -26,6 +32,11 @@ export async function apiRequest(path, options = {}) {
     ...options,
     headers,
   });
+
+  if (response.status === 401) {
+    setToken(null);
+    onUnauthorized?.();
+  }
 
   if (response.status === 204) return null;
 

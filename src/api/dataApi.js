@@ -42,6 +42,7 @@ export async function fetchBootstrapData() {
   if (!token) {
     const pub = await fetchPublicReferenceData();
     return {
+      authenticated: false,
       users: [],
       submissions: [],
       achievements: [],
@@ -96,6 +97,7 @@ export async function fetchBootstrapData() {
   });
 
   return {
+    authenticated: true,
     users: users.length ? users : students,
     students,
     directions,
@@ -204,6 +206,13 @@ export const dataApi = {
 
   markNotificationRead: (id) =>
     apiRequest(`/notifications/${id}/read`, { method: 'PATCH' }),
+  createNotification: (payload) =>
+    apiRequest('/notifications', { method: 'POST', body: JSON.stringify(payload) }),
+  createNotificationsBulk: (items) =>
+    apiRequest('/notifications/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
 
   updateUser: (id, payload) =>
     apiRequest(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),

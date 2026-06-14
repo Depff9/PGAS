@@ -92,14 +92,11 @@ export default function SubmissionReview() {
     await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
     if (shouldNotifyStatus(updated.status)) {
       const dirTitle = directions.find((d) => d.id === updated.directionId)?.title;
-      dispatch(
-        setNotifications(
-          appendNotification(
-            notifications,
-            buildStatusNotification(updated, updated.userId, dirTitle)
-          )
-        )
-      );
+      const notification = buildStatusNotification(updated, updated.userId, dirTitle);
+      if (notification) {
+        dispatch(setNotifications(appendNotification(notifications, notification)));
+        await dataApi.createNotification(notification).catch(() => null);
+      }
     }
     await dataApi
       .updateAchievement(updated.id, {
@@ -127,7 +124,11 @@ export default function SubmissionReview() {
       </header>
 
       {directions
-        .filter((d) => d.active && allowedDirections.includes(d.id))
+        .filter(
+          (d) =>
+            d.active &&
+            (allowedDirections.length === 0 || allowedDirections.includes(d.id))
+        )
         .map((d) => {
           const max = getDirectionLimit(regulations, d.id);
           const dirAch = subAch.filter((a) => a.directionId === d.id);
@@ -185,7 +186,11 @@ export default function SubmissionReview() {
         />
       )}
 
-      {subAch.filter((a) => allowedDirections.includes(a.directionId)).length === 0 && (
+      {subAch.filter(
+        (a) =>
+          a.title &&
+          (allowedDirections.length === 0 || allowedDirections.includes(a.directionId))
+      ).length === 0 && (
         <div className="empty-state card">
           В этом заявлении нет достижений по направлениям, доступным вам для оценки.
         </div>

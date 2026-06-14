@@ -75,13 +75,19 @@ export default function Applications() {
         : a
     );
     const otherAch = achievements.filter((a) => a.submissionId !== submission.id);
-    dispatch(setAchievements([...otherAch, ...updatedAch]));
     const synced = syncSubmissionFromAchievements(
       { ...submission, submittedAt: new Date().toISOString(), status: SUBMISSION_STATUS.SUBMITTED },
       [...otherAch, ...updatedAch]
     );
     synced.status = SUBMISSION_STATUS.SUBMITTED;
     synced.submittedAt = new Date().toISOString();
+    try {
+      await dataApi.submitOwnSubmission(synced.id);
+    } catch (error) {
+      setRequestError(error.message || 'Не удалось подать заявление');
+      return;
+    }
+    dispatch(setAchievements([...otherAch, ...updatedAch]));
     dispatch(
       setSubmissions(
         submissions.some((s) => s.id === synced.id)
@@ -89,12 +95,6 @@ export default function Applications() {
           : [...submissions, synced]
       )
     );
-    try {
-      await dataApi.submitOwnSubmission(synced.id);
-    } catch (error) {
-      setRequestError(error.message || 'Не удалось подать заявление');
-      return;
-    }
     alert('Заявление на ПГАС подано');
   };
 

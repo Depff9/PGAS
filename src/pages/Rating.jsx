@@ -90,8 +90,16 @@ export default function Rating() {
     });
   }, [users, achievements, faculties, submissions, sortState, facultyFilter, serverRows, user?.role, ratingError]);
 
-  const myScore = user?.role === ROLES.STUDENT ? getStudentTotalScore(user.id, achievements) : 0;
-  const myPlace = ratingRows.find((r) => r.student.id === user?.id)?.place;
+  const myRow =
+    user?.role === ROLES.STUDENT && Array.isArray(serverRows)
+      ? serverRows.find((row) => row.userId === user.id)
+      : null;
+  const myScore =
+    user?.role === ROLES.STUDENT
+      ? myRow?.totalScore ??
+        (ratingError ? getStudentTotalScore(user.id, achievements) : 0)
+      : 0;
+  const myPlace = myRow?.place;
 
   return (
     <div className="app-shell">

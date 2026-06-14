@@ -80,7 +80,8 @@ export default function Regulations({ readOnly = false }) {
   };
 
   const save = async () => {
-    const historyEntry = createHistoryEntry({
+    try {
+      const historyEntry = createHistoryEntry({
       category: 'regulations',
       action: 'update',
       summary: 'Обновлён регламент подачи заявлений',
@@ -100,14 +101,16 @@ export default function Regulations({ readOnly = false }) {
       updatedBy: user?.id,
     };
     dispatch(setRegulations(payload));
-    await dataApi.updateRegulations(payload).catch(() => null);
+    const savedRegulations = await dataApi.updateRegulations(payload);
+    if (savedRegulations) dispatch(setRegulations(savedRegulations));
     const nextMatrix = {
       ...scoringMatrix,
       levels: localLevels,
       updatedAt: new Date().toISOString(),
     };
     dispatch(setScoringMatrix(nextMatrix));
-    await dataApi.updateScoringMatrix(nextMatrix).catch(() => null);
+    const savedMatrix = await dataApi.updateScoringMatrix(nextMatrix);
+    if (savedMatrix) dispatch(setScoringMatrix(savedMatrix));
     const infoNotifications = users
       .filter((u) => u.role === ROLES.STUDENT)
       .map((u) =>
@@ -117,6 +120,7 @@ export default function Regulations({ readOnly = false }) {
         )
       );
     dispatch(setNotifications([...infoNotifications, ...notifications]));
+    await dataApi.createNotificationsBulk(infoNotifications).catch(() => null);
     dispatch(
       setHistory([
         { ...historyEntry, snapshot: payload },
@@ -126,6 +130,9 @@ export default function Regulations({ readOnly = false }) {
     await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      alert(error.message || 'Не удалось сохранить регламент');
+    }
   };
 
   if (!regulations) {

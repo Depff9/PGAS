@@ -9,6 +9,15 @@ import { assertValidPersonName } from '../utils/personName.js';
 
 const router = Router();
 
+function assertPasswordPolicy(password) {
+  if (password.length < 6) {
+    throw createHttpError(400, 'Пароль должен быть не короче 6 символов');
+  }
+  if (password.length > 128) {
+    throw createHttpError(400, 'Пароль слишком длинный');
+  }
+}
+
 function signUser(user) {
   const payload = {
     id: user.id,
@@ -55,6 +64,7 @@ router.post('/register', async (req, res, next) => {
     if (!email || !password || !firstName || !lastName) {
       throw createHttpError(400, 'Заполните обязательные поля');
     }
+    assertPasswordPolicy(password);
 
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) throw createHttpError(409, 'Пользователь с таким email уже существует');

@@ -37,19 +37,21 @@ export default function Profile() {
       firstName: form.firstName.trim(),
       middleName: form.middleName.trim(),
     };
-    dispatch(updateProfile(patch));
-    await dataApi
-      .updateOwnProfile({
+    try {
+      const saved = await dataApi.updateOwnProfile({
         firstName: patch.firstName,
         lastName: patch.lastName,
         middleName: patch.middleName,
-      })
-      .catch(() => null);
-    const updatedUsers = users.map((u) => (u.id === user.id ? { ...u, ...patch } : u));
-    dispatch(setUsers(updatedUsers));
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+      });
+      dispatch(updateProfile(saved || patch));
+      const updatedUsers = users.map((u) => (u.id === user.id ? { ...u, ...patch } : u));
+      dispatch(setUsers(updatedUsers));
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      alert(error.message || 'Не удалось сохранить профиль');
+    }
   };
 
   return (

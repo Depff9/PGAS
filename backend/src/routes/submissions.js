@@ -6,6 +6,23 @@ import { assertDeadlineOpen } from '../utils/deadline.js';
 
 const router = Router();
 
+const studentUserSelect = {
+  id: true,
+  email: true,
+  role: true,
+  lastName: true,
+  firstName: true,
+  middleName: true,
+  facultyId: true,
+  group: true,
+};
+
+const commissionUserSelect = {
+  ...studentUserSelect,
+  recordBookNumber: true,
+  studentCardNumber: true,
+};
+
 router.use(authRequired);
 
 router.get('/', async (req, res, next) => {
@@ -17,25 +34,13 @@ router.get('/', async (req, res, next) => {
           ? { userId: String(req.query.userId) }
           : {};
 
+    const userSelect = req.auth.role === 'student' ? studentUserSelect : commissionUserSelect;
+
     const items = await prisma.submission.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
       include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            role: true,
-            lastName: true,
-            firstName: true,
-            middleName: true,
-            facultyId: true,
-            group: true,
-            recordBookNumber: true,
-            studentCardNumber: true,
-            permissions: true,
-          },
-        },
+        user: { select: userSelect },
       },
     });
 
@@ -47,7 +52,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', requireRoles('student'), async (req, res, next) => {
   try {
-    assertDeadlineOpen();
+    await assertDeadlineOpen();
     const body = req.body || {};
     const existing = await prisma.submission.findFirst({
       where: {
@@ -63,8 +68,8 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
         id: `sub-${req.auth.id}-${Date.now()}`,
         userId: req.auth.id,
         academicYear: String(body.academicYear || '2025-2026'),
-        status: body.status || 'draft',
-        submittedAt: body.submittedAt ? new Date(body.submittedAt) : null,
+        status: 'draft',
+        submittedAt: null,
       },
     });
 
@@ -96,7 +101,7 @@ router.patch('/:id/status', requireRoles('commission', 'admin'), async (req, res
 
 router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
   try {
-    assertDeadlineOpen();
+    await assertDeadlineOpen();
     const { id } = req.params;
     const submission = await prisma.submission.findUnique({ where: { id } });
     if (!submission) throw createHttpError(404, 'Заявка не найдена');

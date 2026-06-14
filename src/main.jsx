@@ -5,8 +5,10 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { store } from './store/store';
 import { reloadData } from './store/dataSlice';
-import { updateProfile } from './store/authSlice';
+import { loginSuccess, logout, updateProfile } from './store/authSlice';
 import { migrateUser } from './utils/migrateUser';
+import { setUnauthorizedHandler, getToken } from './api/client';
+import { meApi } from './api/authApi';
 import './styles/global.css';
 import './styles/navbar.css';
 import './styles/sidebar.css';
@@ -14,7 +16,21 @@ import './styles/dashboard.css';
 import './styles/forms.css';
 import './styles/tables.css';
 
+setUnauthorizedHandler(() => {
+  store.dispatch(logout());
+});
+
 async function bootstrap() {
+  const token = getToken();
+  if (token) {
+    try {
+      const user = await meApi();
+      store.dispatch(loginSuccess(user));
+    } catch {
+      store.dispatch(logout());
+    }
+  }
+
   try {
     await store.dispatch(reloadData());
   } catch {

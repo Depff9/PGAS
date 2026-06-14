@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
+import {
+  requireCommissionPermission,
+  requireAnyCommissionPermission,
+} from '../middleware/commission.js';
 
 const router = Router();
 
@@ -126,6 +130,7 @@ router.post(
   '/directions',
   authRequired,
   requireRoles('commission', 'admin'),
+  requireCommissionPermission('canEditDirections'),
   async (req, res, next) => {
     try {
       const payload = req.body || {};
@@ -150,6 +155,7 @@ router.patch(
   '/directions/:id',
   authRequired,
   requireRoles('commission', 'admin'),
+  requireCommissionPermission('canEditDirections'),
   async (req, res, next) => {
     try {
       const updated = await prisma.direction.update({
@@ -313,6 +319,7 @@ router.patch(
   '/regulations',
   authRequired,
   requireRoles('commission', 'admin'),
+  requireCommissionPermission('canEditRegulations'),
   async (req, res, next) => {
     try {
       const payload = req.body || {};
@@ -357,6 +364,7 @@ router.patch(
   '/scoring-matrix',
   authRequired,
   requireRoles('commission', 'admin'),
+  requireAnyCommissionPermission('canEditRegulations', 'canEditScoringMatrix'),
   async (req, res, next) => {
     try {
       const payload = req.body || {};

@@ -26,7 +26,10 @@ router.post('/', requireRoles('admin'), async (req, res, next) => {
     const firstName = assertValidPersonName(data.firstName, 'Имя');
     const lastName = assertValidPersonName(data.lastName, 'Фамилия');
     const middleName = assertValidPersonName(data.middleName, 'Отчество', false);
-    const passwordHash = await bcrypt.hash(String(data.password || 'demo123'), 10);
+    const password = String(data.password || '').trim();
+    if (!password) throw createHttpError(400, 'Пароль обязателен');
+    if (password.length < 6) throw createHttpError(400, 'Пароль должен быть не короче 6 символов');
+    const passwordHash = await bcrypt.hash(password, 10);
     const created = await prisma.user.create({
       data: {
         id: data.id || `u${Date.now()}`,
