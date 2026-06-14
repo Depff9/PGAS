@@ -7,6 +7,7 @@ export default function AchievementReviewModal({
   achievement,
   student,
   direction,
+  readOnly = false,
   onClose,
   onSave,
 }) {
@@ -28,7 +29,11 @@ export default function AchievementReviewModal({
     JSON.stringify(revisionItems) !== JSON.stringify(achievement.revision?.items?.length ? achievement.revision.items : [{ field: 'description', message: '' }]);
 
   const handleClose = () => {
-    if (hasUnsavedChanges && !confirm('Есть несохраненные изменения. Закрыть без сохранения?')) {
+    if (
+      !readOnly &&
+      hasUnsavedChanges &&
+      !confirm('Есть несохраненные изменения. Закрыть без сохранения?')
+    ) {
       return;
     }
     onClose();
@@ -69,7 +74,7 @@ export default function AchievementReviewModal({
     <div className="modal-overlay" role="dialog" aria-modal="true">
       <div className="modal card modal--wide">
         <header className="modal__header">
-          <h2>Рассмотрение достижения</h2>
+          <h2>{readOnly ? 'Просмотр достижения' : 'Рассмотрение достижения'}</h2>
           <button type="button" className="modal__close" onClick={handleClose}>
             ×
           </button>
@@ -110,10 +115,12 @@ export default function AchievementReviewModal({
               min={0}
               value={finalScore}
               onChange={(e) => setFinalScore(e.target.value)}
+              disabled={readOnly}
             />
           </div>
         </div>
 
+        {!readOnly && (
         <div className="editor-block">
           <h4>Правки (шаблоны)</h4>
           <div className="form-group">
@@ -186,8 +193,15 @@ export default function AchievementReviewModal({
             />
           </div>
         </div>
+        )}
 
         <div className="form-actions">
+          {readOnly ? (
+            <button type="button" className="btn btn--ghost" onClick={onClose}>
+              Закрыть
+            </button>
+          ) : (
+            <>
           <button
             type="button"
             className="btn btn--primary"
@@ -211,6 +225,8 @@ export default function AchievementReviewModal({
           >
             Отклонить
           </button>
+            </>
+          )}
         </div>
       </div>
     </div>

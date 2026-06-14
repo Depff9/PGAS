@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setSubmissions, setAchievements } from '../store/dataSlice';
 import {
   SUBMISSION_STATUS_LABELS,
-  CURRENT_SEMESTER_LABEL,
+  getCurrentSemesterLabel,
 } from '../constants/submissions';
 import { ACHIEVEMENT_STATUS_LABELS } from '../constants/achievements';
 import {
@@ -18,18 +18,10 @@ import {
 } from '../utils/submissions';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { dataApi } from '../api/dataApi';
-
-function getDeadlineLabel(regulations) {
-  const section = regulations?.sections?.find((s) => s.id === 'r2');
-  const content = section?.content || '';
-  const winter = content.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  const summer = content.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  if (winter && summer) return `${winter} / ${summer}`;
-  const explicit = content.match(/до\s+(\d{1,2}\s+\S+)/i)?.[1];
-  if (explicit) return explicit;
-  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
-  return allDates.at(-1) || 'даты из регламента';
-}
+import {
+  getActiveDeadlineLabel,
+  isDeadlineReached as isSubmissionDeadlineReached,
+} from '../utils/submissionDeadlines';
 
 export default function Applications() {
   const dispatch = useAppDispatch();
@@ -49,8 +41,9 @@ export default function Applications() {
   const subAch = submission
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
-  const isDeadlineReached = deadlineIso ? new Date(deadlineIso).getTime() < Date.now() : false;
-  const deadlineLabel = getDeadlineLabel(regulations);
+  const isDeadlineReached = isSubmissionDeadlineReached(deadlineIso);
+  const deadlineLabel = getActiveDeadlineLabel(regulations);
+  const semesterLabel = getCurrentSemesterLabel(regulations);
   const filled = countFilledAchievements(subAch);
   const totalScore = getSubmissionTotalScore(subAch);
 
@@ -105,7 +98,7 @@ export default function Applications() {
         <header className="page-header">
           <h1>Моё заявление на ПГАС</h1>
           <p>
-            Одно заявление на повышенную стипендию за {CURRENT_SEMESTER_LABEL}.
+            Одно заявление на повышенную стипендию за {semesterLabel}.
             Внутри — достижения по направлениям.
           </p>
         </header>
@@ -121,7 +114,7 @@ export default function Applications() {
           <div className="submission-card__head">
             <div>
               <h2 style={{ margin: 0 }}>Заявление на ПГАС</h2>
-              <p className="form-hint">Семестр: {CURRENT_SEMESTER_LABEL}</p>
+              <p className="form-hint">Семестр: {semesterLabel}</p>
             </div>
             <span className={`badge badge--${submission?.status || 'draft'}`}>
               {SUBMISSION_STATUS_LABELS[submission?.status] || 'Черновик'}

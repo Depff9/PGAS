@@ -1,5 +1,6 @@
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
-import { SUBMISSION_STATUS, CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
+import { SUBMISSION_STATUS } from '../constants/submissions';
+import { getCurrentAcademicYear, isSameAcademicYear } from './academicYear';
 import { getEffectiveScore } from './scoring';
 
 export function getDirectionLimit(regulations, directionId) {
@@ -11,11 +12,23 @@ export function getSubmissionAchievements(achievements, submissionId) {
   return achievements.filter((a) => a.submissionId === submissionId);
 }
 
-export function getStudentSubmission(submissions, userId, year = CURRENT_ACADEMIC_YEAR) {
-  return submissions.find((s) => s.userId === userId && s.academicYear === year);
+export function getStudentSubmission(submissions, userId, year = getCurrentAcademicYear()) {
+  return submissions.find(
+    (s) => s.userId === userId && isSameAcademicYear(s.academicYear, year)
+  );
 }
 
-export function getOrCreateSubmission(submissions, userId, year = CURRENT_ACADEMIC_YEAR) {
+export function isHistoricalSubmission(submission, referenceDate = new Date()) {
+  if (!submission) return false;
+  return !isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate));
+}
+
+export function isCurrentPeriodSubmission(submission, referenceDate = new Date()) {
+  if (!submission) return false;
+  return isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate));
+}
+
+export function getOrCreateSubmission(submissions, userId, year = getCurrentAcademicYear()) {
   const existing = getStudentSubmission(submissions, userId, year);
   if (existing) return existing;
   return {

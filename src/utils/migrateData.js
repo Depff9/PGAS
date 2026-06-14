@@ -1,7 +1,7 @@
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { initialAchievements } from '../mock/achievements';
 import { initialSubmissions } from '../mock/submissions';
-import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
+import { getCurrentAcademicYear, isSameAcademicYear } from './academicYear';
 import { getOrCreateSubmission } from './submissions';
 
 const STATUS_MAP = {
@@ -43,7 +43,7 @@ function buildSubmissionsFromAchievements(achievements, existingSubmissions) {
 
   userIds.forEach((userId) => {
     let sub = submissions.find(
-      (s) => s.userId === userId && s.academicYear === CURRENT_ACADEMIC_YEAR
+      (s) => s.userId === userId && isSameAcademicYear(s.academicYear, getCurrentAcademicYear())
     );
     if (!sub) {
       sub = getOrCreateSubmission(submissions, userId);

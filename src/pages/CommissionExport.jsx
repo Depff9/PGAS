@@ -47,7 +47,7 @@ export default function CommissionExport() {
     <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Экспорт ведомости</h1>
-        <p>Выгрузка заявлений на ПГАС для комиссии и профкома</p>
+        <p>Выгрузка заявлений на ПГАС для комиссии и профкома. Включает все направления и периоды вне зависимости от ваших прав на рассмотрение.</p>
       </header>
 
       <div className="card">

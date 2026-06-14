@@ -130,6 +130,7 @@ model Regulation {
   updatedBy              String?
   defaultMaxPerDirection Int
   directionLimits        Json
+  submissionDeadlines    Json?
   sections               Json
   createdAt              DateTime @default(now())
 

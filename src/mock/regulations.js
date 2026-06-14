@@ -1,6 +1,13 @@
+import {
+  buildDeadlineSectionContent,
+  getDefaultSubmissionDeadlines,
+} from '../utils/submissionDeadlines.js';
+
+const defaultDeadlines = getDefaultSubmissionDeadlines();
+
 export const initialRegulations = {
   title: 'Регламент назначения и выплаты повышенной государственной академической стипендии (ПГАС) — БрГУ',
-  updatedAt: '2026-02-01T00:00:00.000Z',
+  updatedAt: new Date().toISOString(),
   updatedBy: 'u3',
   defaultMaxPerDirection: 7,
   directionLimits: {
@@ -10,6 +17,7 @@ export const initialRegulations = {
     d4: 7,
     d5: 7,
   },
+  submissionDeadlines: defaultDeadlines,
   sections: [
     {
       id: 'r1',
@@ -20,8 +28,7 @@ export const initialRegulations = {
     {
       id: 'r2',
       heading: 'Сроки подачи',
-      content:
-        'Приём документов: по итогам зимней сессии — до 10 февраля, по итогам летней сессии — до 1 июля. Назначение производится не реже двух раз в год по итогам промежуточной аттестации.',
+      content: buildDeadlineSectionContent(defaultDeadlines),
     },
     {
       id: 'r2_1',

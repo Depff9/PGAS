@@ -5,6 +5,9 @@ import {
   requireCommissionPermission,
   requireAnyCommissionPermission,
 } from '../middleware/commission.js';
+import { createHttpError } from '../utils/http.js';
+import { prepareRegulationPayload } from '../../../src/utils/submissionDeadlines.js';
+import { getAcademicYearVariants } from '../utils/academicYear.js';
 
 const router = Router();
 
@@ -56,6 +59,7 @@ router.get('/students', authRequired, requireRoles('admin', 'commission'), async
 
 router.get('/rating', authRequired, async (_req, res, next) => {
   try {
+    const currentAcademicYears = getAcademicYearVariants();
     const [students, submissions, achievements] = await Promise.all([
       prisma.user.findMany({
         where: { role: 'student' },
@@ -70,22 +74,33 @@ router.get('/rating', authRequired, async (_req, res, next) => {
         },
       }),
       prisma.submission.findMany({
-        where: { status: { not: 'draft' } },
-        select: { userId: true },
+        where: {
+          status: { not: 'draft' },
+          academicYear: { in: currentAcademicYears },
+        },
+        select: { userId: true, id: true },
       }),
       prisma.achievement.findMany({
         where: {
           status: { in: ['submitted', 'approved', 'revision'] },
         },
-        select: { userId: true, title: true, score: true, finalScore: true },
+        select: {
+          userId: true,
+          submissionId: true,
+          title: true,
+          score: true,
+          finalScore: true,
+        },
       }),
     ]);
 
+    const currentSubmissionIds = new Set(submissions.map((s) => s.id));
     const submittedUserIds = new Set(submissions.map((s) => s.userId));
     const scoreByUser = new Map();
     const countByUser = new Map();
 
     achievements.forEach((item) => {
+      if (!currentSubmissionIds.has(item.submissionId)) return;
       const normalizedTitle = String(item.title || '').trim();
       if (!normalizedTitle) return;
       submittedUserIds.add(item.userId);
@@ -323,24 +338,41 @@ router.patch(
   async (req, res, next) => {
     try {
       const payload = req.body || {};
+      const prepared = prepareRegulationPayload(
+        {
+          title: payload.title,
+          sections: payload.sections,
+          directionLimits: payload.directionLimits,
+          defaultMaxPerDirection: payload.defaultMaxPerDirection,
+        },
+        payload.submissionDeadlines
+      );
+
+      if (!prepared.valid) {
+        throw createHttpError(400, prepared.message);
+      }
+
+      const nextPayload = prepared.payload;
       const regulation = await prisma.regulation.upsert({
         where: { id: 1 },
         create: {
           id: 1,
-          title: payload.title || 'Регламент ПГАС',
+          title: nextPayload.title || 'Регламент ПГАС',
           updatedAt: new Date(),
           updatedBy: req.auth.id,
-          defaultMaxPerDirection: Number(payload.defaultMaxPerDirection || 7),
-          directionLimits: payload.directionLimits || {},
-          sections: payload.sections || [],
+          defaultMaxPerDirection: Number(nextPayload.defaultMaxPerDirection || 7),
+          directionLimits: nextPayload.directionLimits || {},
+          submissionDeadlines: nextPayload.submissionDeadlines,
+          sections: nextPayload.sections || [],
         },
         update: {
-          title: payload.title,
+          title: nextPayload.title,
           updatedAt: new Date(),
           updatedBy: req.auth.id,
-          defaultMaxPerDirection: payload.defaultMaxPerDirection,
-          directionLimits: payload.directionLimits,
-          sections: payload.sections,
+          defaultMaxPerDirection: nextPayload.defaultMaxPerDirection,
+          directionLimits: nextPayload.directionLimits,
+          submissionDeadlines: nextPayload.submissionDeadlines,
+          sections: nextPayload.sections,
         },
       });
 

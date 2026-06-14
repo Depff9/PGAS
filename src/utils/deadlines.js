@@ -1,13 +1,12 @@
 import { buildDeadlineNotification } from './notifications';
 import { NOTIFICATION_TYPES } from './notifications';
+import { getActiveDeadlineLabel } from './submissionDeadlines';
 
 export function ensureDeadlineNotifications(users, notifications, regulations) {
   if (!notifications?.length) return notifications || [];
 
   const students = users.filter((u) => u.role === 'student');
-  const deadlineText =
-    regulations.sections?.find((s) => s.id === 'r2')?.content ||
-    '30 ноября';
+  const deadlineText = getActiveDeadlineLabel(regulations);
   const message = `Напоминание: приём заявлений на ПГАС завершается (${deadlineText}). Проверьте таблицу достижений.`;
 
   const already = notifications.some(

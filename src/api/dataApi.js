@@ -1,5 +1,6 @@
 import { apiRequest } from './client';
 import { getToken } from './client';
+import { getActiveDeadlineIso } from '../utils/submissionDeadlines';
 
 export async function fetchPublicReferenceData() {
   return apiRequest('/reference/public');
@@ -7,34 +8,6 @@ export async function fetchPublicReferenceData() {
 
 export async function fetchRatingRows() {
   return apiRequest('/reference/rating');
-}
-
-function parseDeadline(regulations) {
-  const section = regulations?.sections?.find((s) => s.id === 'r2');
-  const text = section?.content || '';
-  const dateMatch = text.match(/до\s+(\d{1,2})\s+([а-яё]+)\s+(\d{4})/i);
-  if (!dateMatch) return null;
-
-  const monthMap = {
-    января: 0,
-    февраля: 1,
-    марта: 2,
-    апреля: 3,
-    мая: 4,
-    июня: 5,
-    июля: 6,
-    августа: 7,
-    сентября: 8,
-    октября: 9,
-    ноября: 10,
-    декабря: 11,
-  };
-
-  const day = Number(dateMatch[1]);
-  const month = monthMap[dateMatch[2].toLowerCase()];
-  const year = Number(dateMatch[3]);
-  if (!Number.isFinite(day) || !Number.isFinite(year) || month == null) return null;
-  return new Date(year, month, day, 23, 59, 59).toISOString();
 }
 
 export async function fetchBootstrapData() {
@@ -49,6 +22,9 @@ export async function fetchBootstrapData() {
       notifications: [],
       history: [],
       ...pub,
+      meta: {
+        deadlineIso: getActiveDeadlineIso(pub.regulations),
+      },
     };
   }
 
@@ -111,7 +87,7 @@ export async function fetchBootstrapData() {
     notifications,
     history,
     meta: {
-      deadlineIso: parseDeadline(regulations),
+      deadlineIso: getActiveDeadlineIso(regulations),
     },
   };
 }

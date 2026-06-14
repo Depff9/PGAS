@@ -4,6 +4,7 @@ import { findFaculty, getFacultyLabel } from '../mock/faculties';
 import { formatFullName } from '../mock/users';
 import { getEffectiveScore } from './scoring';
 import { SUBMISSION_STATUS } from '../constants/submissions';
+import { isCurrentPeriodSubmission } from './submissions';
 
 const COUNTED_STATUSES = [
   ACHIEVEMENT_STATUS.SUBMITTED,
@@ -11,14 +12,35 @@ const COUNTED_STATUSES = [
   ACHIEVEMENT_STATUS.REVISION,
 ];
 
-export function getStudentTotalScore(userId, achievements) {
+function getCurrentSubmissionIds(submissions = []) {
+  return new Set(
+    submissions.filter(isCurrentPeriodSubmission).map((submission) => submission.id)
+  );
+}
+
+function isCurrentPeriodAchievement(achievement, currentSubmissionIds) {
+  if (currentSubmissionIds === null) return true;
+  if (!achievement.submissionId) return false;
+  return currentSubmissionIds.has(achievement.submissionId);
+}
+
+export function getStudentTotalScore(userId, achievements, submissions = null) {
+  const currentSubmissionIds =
+    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
   return achievements
-    .filter((a) => a.userId === userId && COUNTED_STATUSES.includes(a.status))
+    .filter(
+      (a) =>
+        a.userId === userId &&
+        COUNTED_STATUSES.includes(a.status) &&
+        isCurrentPeriodAchievement(a, currentSubmissionIds)
+    )
     .reduce((sum, a) => sum + getEffectiveScore(a), 0);
 }
 
-export function buildFacultyRating(facultyId, users, achievements, faculties) {
+export function buildFacultyRating(facultyId, users, achievements, faculties, submissions = null) {
   const faculty = findFaculty(faculties, facultyId);
+  const currentSubmissionIds =
+    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
   const students = users.filter(
     (u) => u.role === ROLES.STUDENT && u.facultyId === facultyId
   );
@@ -26,9 +48,12 @@ export function buildFacultyRating(facultyId, users, achievements, faculties) {
   const rows = students
     .map((student) => ({
       student,
-      totalScore: getStudentTotalScore(student.id, achievements),
+      totalScore: getStudentTotalScore(student.id, achievements, submissions),
       achievementsCount: achievements.filter(
-        (a) => a.userId === student.id && COUNTED_STATUSES.includes(a.status)
+        (a) =>
+          a.userId === student.id &&
+          COUNTED_STATUSES.includes(a.status) &&
+          isCurrentPeriodAchievement(a, currentSubmissionIds)
       ).length,
     }))
     .sort(
@@ -62,18 +87,20 @@ export function buildOverallRating(users, achievements, faculties, submissions =
     }
   });
 
-  const submittedUserIds = new Set();
-  const hasSubmittedAchievementsByUser = new Set(
-    achievements
-      .filter((a) => a.title && COUNTED_STATUSES.includes(a.status))
-      .map((a) => a.userId)
+  const currentSubmissions = submissions.filter(
+    (s) => isCurrentPeriodSubmission(s) && s.status && s.status !== SUBMISSION_STATUS.DRAFT
   );
-  submissions.forEach((s) => {
-    if (s.status && s.status !== SUBMISSION_STATUS.DRAFT) {
-      submittedUserIds.add(s.userId);
-    }
-  });
-  hasSubmittedAchievementsByUser.forEach((id) => submittedUserIds.add(id));
+  const currentSubmissionIds =
+    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
+  const submittedUserIds = new Set(currentSubmissions.map((s) => s.userId));
+  achievements
+    .filter(
+      (a) =>
+        a.title &&
+        COUNTED_STATUSES.includes(a.status) &&
+        isCurrentPeriodAchievement(a, currentSubmissionIds)
+    )
+    .forEach((a) => submittedUserIds.add(a.userId));
 
   return [...studentById.values()]
     .filter((u) => submittedUserIds.has(u.id))
@@ -83,9 +110,12 @@ export function buildOverallRating(users, achievements, faculties, submissions =
         student,
         fullName: formatFullName(student),
         facultyLabel: faculty ? getFacultyLabel(faculty) : '—',
-        totalScore: getStudentTotalScore(student.id, achievements),
+        totalScore: getStudentTotalScore(student.id, achievements, submissions),
         achievementsCount: achievements.filter(
-          (a) => a.userId === student.id && COUNTED_STATUSES.includes(a.status)
+          (a) =>
+            a.userId === student.id &&
+            COUNTED_STATUSES.includes(a.status) &&
+            isCurrentPeriodAchievement(a, currentSubmissionIds)
         ).length,
       };
     })

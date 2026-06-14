@@ -97,7 +97,7 @@ export default function Rating() {
   const myScore =
     user?.role === ROLES.STUDENT
       ? myRow?.totalScore ??
-        (ratingError ? getStudentTotalScore(user.id, achievements) : 0)
+        (ratingError ? getStudentTotalScore(user.id, achievements, submissions) : 0)
       : 0;
   const myPlace = myRow?.place;
 

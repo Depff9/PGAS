@@ -14,36 +14,61 @@
 }
 
 .archive-table {
-  table-layout: auto;
+  table-layout: fixed;
+  width: 100%;
 }
 
 .archive-table th:nth-child(1),
-.archive-table td:nth-child(1) { width: 15%; }
+.archive-table td:nth-child(1) { width: 13%; }
 .archive-table th:nth-child(2),
-.archive-table td:nth-child(2) { width: 18%; }
+.archive-table td:nth-child(2) { width: 9%; }
 .archive-table th:nth-child(3),
-.archive-table td:nth-child(3) { width: 17%; }
+.archive-table td:nth-child(3) { width: 15%; }
 .archive-table th:nth-child(4),
-.archive-table td:nth-child(4) { width: 8%; }
+.archive-table td:nth-child(4) { width: 15%; }
 .archive-table th:nth-child(5),
-.archive-table td:nth-child(5) { width: 8%; }
+.archive-table td:nth-child(5) { width: 7%; }
 .archive-table th:nth-child(6),
-.archive-table td:nth-child(6) { width: 11%; }
+.archive-table td:nth-child(6) { width: 6%; }
 .archive-table th:nth-child(7),
-.archive-table td:nth-child(7) { width: 15%; }
+.archive-table td:nth-child(7) { width: 7%; }
 .archive-table th:nth-child(8),
-.archive-table td:nth-child(8) { width: 8%; min-width: 96px; }
+.archive-table td:nth-child(8) { width: 11%; }
+.archive-table th:nth-child(9),
+.archive-table td:nth-child(9) { width: 9%; }
 
 .archive-table th,
 .archive-table td {
   white-space: normal;
   word-break: normal;
   overflow-wrap: break-word;
+  padding: 0.65rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.archive-table__open {
+  text-align: center;
+}
+
+.archive-table__open .btn {
+  padding: 0.3rem 0.55rem;
+  font-size: 0.78rem;
 }
 
 .data-table--adaptive {
   table-layout: fixed;
 }
+
+.data-table--audit th:nth-child(1),
+.data-table--audit td:nth-child(1) { width: 14%; }
+.data-table--audit th:nth-child(2),
+.data-table--audit td:nth-child(2) { width: 14%; }
+.data-table--audit th:nth-child(3),
+.data-table--audit td:nth-child(3) { width: 10%; }
+.data-table--audit th:nth-child(4),
+.data-table--audit td:nth-child(4) { width: 44%; }
+.data-table--audit th:nth-child(5),
+.data-table--audit td:nth-child(5) { width: 18%; }
 
 .data-table--adaptive th,
 .data-table--adaptive td {

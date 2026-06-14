@@ -22,3 +22,12 @@ export async function meApi() {
   const data = await apiRequest('/auth/me');
   return data.user;
 }
+
+export async function logoutApi() {
+  try {
+    await apiRequest('/auth/logout', { method: 'POST' });
+  } catch {
+    // session may already be invalid
+  }
+  setToken(null);
+}

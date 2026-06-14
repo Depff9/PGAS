@@ -6,6 +6,8 @@ import { config } from '../config.js';
 import { createHttpError, pickUserSafeFields } from '../utils/http.js';
 import { authRequired } from '../middleware/auth.js';
 import { assertValidPersonName } from '../utils/personName.js';
+import { recordAuditEntry } from '../utils/auditHistory.js';
+import { formatFullName } from '../utils/personNameFormat.js';
 
 const router = Router();
 
@@ -46,6 +48,15 @@ router.post('/login', async (req, res, next) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw createHttpError(401, 'Неверный email или пароль');
 
+    await recordAuditEntry({
+      action: 'login',
+      entity: 'auth.login',
+      summary: `Вход в систему: ${user.email}`,
+      createdBy: user.id,
+      userName: formatFullName(user),
+      metadata: { role: user.role, email: user.email },
+    });
+
     const token = signUser(user);
     res.json({ token, user: pickUserSafeFields(user) });
   } catch (error) {
@@ -82,6 +93,15 @@ router.post('/register', async (req, res, next) => {
       },
     });
 
+    await recordAuditEntry({
+      action: 'register',
+      entity: 'auth.register',
+      summary: `Регистрация студента: ${user.email}`,
+      createdBy: user.id,
+      userName: formatFullName(user),
+      metadata: { role: user.role, email: user.email },
+    });
+
     const token = signUser(user);
     res.status(201).json({ token, user: pickUserSafeFields(user) });
   } catch (error) {
@@ -94,6 +114,25 @@ router.get('/me', authRequired, async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { id: req.auth.id } });
     if (!user) throw createHttpError(404, 'Пользователь не найден');
     res.json({ user: pickUserSafeFields(user) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/logout', authRequired, async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.auth.id } });
+    if (user) {
+      await recordAuditEntry({
+        action: 'logout',
+        entity: 'auth.logout',
+        summary: `Выход из системы: ${user.email}`,
+        createdBy: user.id,
+        userName: formatFullName(user),
+        metadata: { role: user.role, email: user.email },
+      });
+    }
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

@@ -9,6 +9,7 @@ import { defaultScoringMatrix } from '../mock/scoringMatrix';
 import { migrateUsers } from '../utils/migrateUser';
 import { hydrateAchievements } from '../utils/migrateData';
 import { fetchBootstrapData } from '../api/dataApi';
+import { getActiveDeadlineIso } from '../utils/submissionDeadlines';
 
 function hydrate(raw) {
   const authenticated = Boolean(raw.authenticated);
@@ -47,7 +48,12 @@ function hydrate(raw) {
     notifications: raw.notifications || [],
     scoringMatrix,
     history: raw.history || [],
-    meta: raw.meta || { deadlineIso: null },
+    meta: {
+      ...(raw.meta || {}),
+      deadlineIso: getActiveDeadlineIso(
+        raw.regulations || (authenticated ? null : initialRegulations)
+      ),
+    },
   };
 }
 
@@ -76,6 +82,10 @@ const dataSlice = createSlice({
     },
     setRegulations(state, action) {
       state.regulations = action.payload;
+      state.meta = {
+        ...state.meta,
+        deadlineIso: getActiveDeadlineIso(action.payload),
+      };
     },
     setFaculties(state, action) {
       state.faculties = action.payload;

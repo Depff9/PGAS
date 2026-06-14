@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { logout } from '../store/authSlice';
+import { logoutApi } from '../api/authApi';
 import { formatFullName, ROLE_LABELS, ROLES } from '../mock/users';
 import { UNIVERSITY } from '../config/university';
 import NotificationBell from './NotificationBell';
@@ -21,7 +22,8 @@ export default function Navbar() {
     pathname.startsWith('/applications') || isWorkspaceActive;
   const isAdminActive = pathname.startsWith('/admin');
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutApi();
     dispatch(logout());
     navigate('/');
   };

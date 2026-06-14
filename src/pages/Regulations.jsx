@@ -11,28 +11,13 @@ import { createHistoryEntry } from '../utils/history';
 import Navbar from '../components/Navbar';
 import { buildRegulationsUpdatedNotification } from '../utils/notifications';
 import { dataApi } from '../api/dataApi';
-
-function parseSubmissionDeadlines(regulations) {
-  const source = regulations?.submissionDeadlines || {};
-  if (source.winter || source.summer) {
-    return {
-      winter: source.winter || '10 февраля',
-      summer: source.summer || '1 июля',
-    };
-  }
-  const section = regulations?.sections?.find((s) => s.id === 'r2');
-  const text = section?.content || '';
-  const winter = text.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  const summer = text.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  return {
-    winter: winter || '10 февраля',
-    summer: summer || '1 июля',
-  };
-}
-
-function buildDeadlineSectionContent(deadlines) {
-  return `Приём документов: по итогам зимней сессии — до ${deadlines.winter}, по итогам летней сессии — до ${deadlines.summer}. Назначение производится не реже двух раз в год по итогам промежуточной аттестации.`;
-}
+import SubmissionDeadlinesEditor from '../components/SubmissionDeadlinesEditor';
+import {
+  buildDeadlineSectionContent,
+  formatDeadlineLabel,
+  normalizeSubmissionDeadlines,
+  prepareRegulationPayload,
+} from '../utils/submissionDeadlines';
 
 export default function Regulations({ readOnly = false }) {
   const dispatch = useAppDispatch();
@@ -53,9 +38,10 @@ export default function Regulations({ readOnly = false }) {
     regulations?.directionLimits || {}
   );
   const [defaultMax, setDefaultMax] = useState(regulations?.defaultMaxPerDirection ?? 7);
-  const [submissionDeadlines, setSubmissionDeadlines] = useState(
-    parseSubmissionDeadlines(regulations)
+  const [submissionDeadlines, setSubmissionDeadlines] = useState(() =>
+    normalizeSubmissionDeadlines(regulations)
   );
+  const [deadlineError, setDeadlineError] = useState('');
   const [saved, setSaved] = useState(false);
   const [localLevels, setLocalLevels] = useState(scoringMatrix?.levels || []);
 
@@ -64,6 +50,7 @@ export default function Regulations({ readOnly = false }) {
   }
 
   const updateSection = (id, field, value) => {
+    if (id === 'r2' && field === 'content') return;
     setSections(sections.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   };
 
@@ -75,61 +62,79 @@ export default function Regulations({ readOnly = false }) {
   };
 
   const removeSection = (id) => {
-    if (sections.length <= 1) return;
+    if (sections.length <= 1 || id === 'r2') return;
     setSections(sections.filter((s) => s.id !== id));
   };
 
   const save = async () => {
+    setDeadlineError('');
     try {
-      const historyEntry = createHistoryEntry({
-      category: 'regulations',
-      action: 'update',
-      summary: 'Обновлён регламент подачи заявлений',
-      userId: user.id,
-      userName: formatFullName(user),
-    });
-    const nextSections = sections.map((s) =>
-      s.id === 'r2' ? { ...s, content: buildDeadlineSectionContent(submissionDeadlines) } : s
-    );
-    const payload = {
-      ...regulations,
-      title,
-      sections: nextSections,
-      defaultMaxPerDirection: Number(defaultMax) || 7,
-      directionLimits: { ...directionLimits },
-      updatedAt: new Date().toISOString(),
-      updatedBy: user?.id,
-    };
-    dispatch(setRegulations(payload));
-    const savedRegulations = await dataApi.updateRegulations(payload);
-    if (savedRegulations) dispatch(setRegulations(savedRegulations));
-    const nextMatrix = {
-      ...scoringMatrix,
-      levels: localLevels,
-      updatedAt: new Date().toISOString(),
-    };
-    dispatch(setScoringMatrix(nextMatrix));
-    const savedMatrix = await dataApi.updateScoringMatrix(nextMatrix);
-    if (savedMatrix) dispatch(setScoringMatrix(savedMatrix));
-    const infoNotifications = users
-      .filter((u) => u.role === ROLES.STUDENT)
-      .map((u) =>
-        buildRegulationsUpdatedNotification(
-          u.id,
-          'Сроки или правила подачи заявлений обновлены комиссией.'
-        )
+      const prepared = prepareRegulationPayload(
+        {
+          ...regulations,
+          title,
+          sections,
+          defaultMaxPerDirection: Number(defaultMax) || 7,
+          directionLimits: { ...directionLimits },
+        },
+        submissionDeadlines
       );
-    dispatch(setNotifications([...infoNotifications, ...notifications]));
-    await dataApi.createNotificationsBulk(infoNotifications).catch(() => null);
-    dispatch(
-      setHistory([
-        { ...historyEntry, snapshot: payload },
-        ...history,
-      ])
-    );
-    await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+
+      if (!prepared.valid) {
+        setDeadlineError(prepared.message);
+        return;
+      }
+
+      const payload = {
+        ...prepared.payload,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.id,
+      };
+
+      const historyEntry = createHistoryEntry({
+        category: 'regulations',
+        action: 'update',
+        summary: 'Обновлён регламент подачи заявлений',
+        userId: user.id,
+        userName: formatFullName(user),
+      });
+
+      dispatch(setRegulations(payload));
+      const savedRegulations = await dataApi.updateRegulations(payload);
+      if (savedRegulations) {
+        dispatch(setRegulations(savedRegulations));
+        setSubmissionDeadlines(normalizeSubmissionDeadlines(savedRegulations));
+        setSections(savedRegulations.sections || []);
+      }
+
+      const nextMatrix = {
+        ...scoringMatrix,
+        levels: localLevels,
+        updatedAt: new Date().toISOString(),
+      };
+      dispatch(setScoringMatrix(nextMatrix));
+      const savedMatrix = await dataApi.updateScoringMatrix(nextMatrix);
+      if (savedMatrix) dispatch(setScoringMatrix(savedMatrix));
+
+      const infoNotifications = users
+        .filter((u) => u.role === ROLES.STUDENT)
+        .map((u) =>
+          buildRegulationsUpdatedNotification(
+            u.id,
+            'Сроки или правила подачи заявлений обновлены комиссией.'
+          )
+        );
+      dispatch(setNotifications([...infoNotifications, ...notifications]));
+      await dataApi.createNotificationsBulk(infoNotifications).catch(() => null);
+      dispatch(
+        setHistory([
+          { ...historyEntry, snapshot: payload },
+          ...history,
+        ])
+      );
+      await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
     } catch (error) {
       alert(error.message || 'Не удалось сохранить регламент');
     }
@@ -145,6 +150,11 @@ export default function Regulations({ readOnly = false }) {
       </div>
     );
   }
+
+  const normalizedDeadlines = normalizeSubmissionDeadlines({
+    submissionDeadlines,
+    sections,
+  });
 
   const content = (
     <>
@@ -189,40 +199,30 @@ export default function Regulations({ readOnly = false }) {
           </div>
         )}
 
-        {canEdit && (
+        {canEdit ? (
           <div className="editor-block">
             <h3 style={{ marginTop: 0 }}>Сроки подачи заявлений</h3>
             <p className="form-hint">
-              Эти сроки используются в интерфейсе и для автоматических ограничений системы.
+              Даты сохраняются в базе данных и автоматически попадают в раздел «Сроки подачи»,
+              на главную страницу и в ограничения системы.
             </p>
-            <div className="form-row form-row--2">
-              <div className="form-group">
-                <label>По итогам зимней сессии</label>
-                <input
-                  value={submissionDeadlines.winter}
-                  onChange={(e) =>
-                    setSubmissionDeadlines({
-                      ...submissionDeadlines,
-                      winter: e.target.value,
-                    })
-                  }
-                  placeholder="например, 10 февраля"
-                />
-              </div>
-              <div className="form-group">
-                <label>По итогам летней сессии</label>
-                <input
-                  value={submissionDeadlines.summer}
-                  onChange={(e) =>
-                    setSubmissionDeadlines({
-                      ...submissionDeadlines,
-                      summer: e.target.value,
-                    })
-                  }
-                  placeholder="например, 1 июля"
-                />
-              </div>
-            </div>
+            <SubmissionDeadlinesEditor
+              value={submissionDeadlines}
+              onChange={setSubmissionDeadlines}
+              error={deadlineError}
+            />
+          </div>
+        ) : (
+          <div className="card editor-block">
+            <h3>Сроки подачи заявлений</h3>
+            <ul>
+              <li>Зимняя сессия: {formatDeadlineLabel(normalizedDeadlines.winter.endsAt)}</li>
+              <li>Летняя сессия: {formatDeadlineLabel(normalizedDeadlines.summer.endsAt)}</li>
+              <li>
+                Текущий период:{' '}
+                {formatDeadlineLabel(normalizedDeadlines[normalizedDeadlines.activePeriod].endsAt)}
+              </li>
+            </ul>
           </div>
         )}
 
@@ -280,16 +280,6 @@ export default function Regulations({ readOnly = false }) {
 
         {!canEdit && (
           <div className="card editor-block">
-            <h3>Сроки подачи заявлений</h3>
-            <ul>
-              <li>По итогам зимней сессии: {parseSubmissionDeadlines(regulations).winter}</li>
-              <li>По итогам летней сессии: {parseSubmissionDeadlines(regulations).summer}</li>
-            </ul>
-          </div>
-        )}
-
-        {!canEdit && (
-          <div className="card editor-block">
             <h3>Лимиты по направлениям</h3>
             <ul>
               {directions.map((d) => (
@@ -315,26 +305,44 @@ export default function Regulations({ readOnly = false }) {
                     onChange={(e) => updateSection(section.id, 'heading', e.target.value)}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Содержание</label>
-                  <textarea
-                    value={section.content}
-                    onChange={(e) => updateSection(section.id, 'content', e.target.value)}
-                    rows={4}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  onClick={() => removeSection(section.id)}
-                >
-                  Удалить раздел
-                </button>
+                {section.id === 'r2' ? (
+                  <div className="form-group">
+                    <label>Содержание</label>
+                    <p className="form-hint">
+                      Текст раздела формируется автоматически из блока «Сроки подачи заявлений».
+                    </p>
+                    <div className="regulation-section regulation-section--readonly">
+                      <p>{buildDeadlineSectionContent(submissionDeadlines)}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Содержание</label>
+                    <textarea
+                      value={section.content}
+                      onChange={(e) => updateSection(section.id, 'content', e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                )}
+                {section.id !== 'r2' && (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={() => removeSection(section.id)}
+                  >
+                    Удалить раздел
+                  </button>
+                )}
               </>
             ) : (
               <div className="regulation-section regulation-section--readonly">
                 <h3>{section.heading}</h3>
-                <p>{section.content}</p>
+                <p>
+                  {section.id === 'r2'
+                    ? buildDeadlineSectionContent(normalizedDeadlines)
+                    : section.content}
+                </p>
               </div>
             )}
           </div>

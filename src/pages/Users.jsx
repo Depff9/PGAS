@@ -255,6 +255,17 @@ export default function Users() {
         ])
       );
     }
+    const historyEntry = createHistoryEntry({
+      category: 'admin.users',
+      action: 'create',
+      summary: `Создан пользователь: ${formatFullName(newUser)} (${ROLE_LABELS[mode]})`,
+      userId: currentUser.id,
+      userName: formatFullName(currentUser),
+      targetId: createdRemote?.id || newUser.id,
+      metadata: { role: mode, email: newUser.email },
+    });
+    dispatch(setHistory([historyEntry, ...history]));
+    await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
     setForm({
       email: '',
       password: 'demo123',
@@ -273,12 +284,26 @@ export default function Users() {
       return;
     }
     if (!confirm('Удалить пользователя?')) return;
+    const removed = users.find((u) => u.id === id);
     dispatch(setUsers(users.filter((u) => u.id !== id)));
     setRequestError('');
     await dataApi.deleteUser(id).catch((error) => {
       setRequestError(error.message || 'Не удалось удалить пользователя');
       return null;
     });
+    if (removed) {
+      const historyEntry = createHistoryEntry({
+        category: 'admin.users',
+        action: 'delete',
+        summary: `Удалён пользователь: ${formatFullName(removed)} (${ROLE_LABELS[removed.role]})`,
+        userId: currentUser.id,
+        userName: formatFullName(currentUser),
+        targetId: id,
+        metadata: { role: removed.role, email: removed.email },
+      });
+      dispatch(setHistory([historyEntry, ...history]));
+      await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
+    }
   };
 
   const facultyGroups = (facultyId) =>

@@ -100,6 +100,7 @@ async function seed() {
       updatedBy: initialRegulations.updatedBy || null,
       defaultMaxPerDirection: initialRegulations.defaultMaxPerDirection ?? 7,
       directionLimits: initialRegulations.directionLimits || {},
+      submissionDeadlines: initialRegulations.submissionDeadlines || null,
       sections: initialRegulations.sections || [],
     },
   });

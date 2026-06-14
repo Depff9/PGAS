@@ -14,20 +14,12 @@ import {
   getDirectionLimit,
   syncSubmissionFromAchievements,
 } from '../utils/submissions';
-import { CURRENT_ACADEMIC_YEAR } from '../constants/submissions';
+import { getCurrentAcademicYear, getCurrentSemesterLabel } from '../constants/submissions';
 import { dataApi } from '../api/dataApi';
-
-function getDeadlineLabel(regulations) {
-  const section = regulations?.sections?.find((s) => s.id === 'r2');
-  const content = section?.content || '';
-  const winter = content.match(/зимней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  const summer = content.match(/летней[^—-]*[—-]\s*до\s*([^,.;]+)/i)?.[1]?.trim();
-  if (winter && summer) return `${winter} / ${summer}`;
-  const explicit = content.match(/до\s+(\d{1,2}\s+\S+)/i)?.[1];
-  if (explicit) return explicit;
-  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
-  return allDates.at(-1) || 'даты из регламента';
-}
+import {
+  getActiveDeadlineLabel,
+  isDeadlineReached as isSubmissionDeadlineReached,
+} from '../utils/submissionDeadlines';
 
 function cellClass(status) {
   if (!status) return 'matrix-cell matrix-cell--empty';
@@ -55,9 +47,11 @@ export default function ApplicationWorkspace() {
   const myAchievements = submission
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
-  const isDeadlineReached = deadlineIso ? new Date(deadlineIso).getTime() < Date.now() : false;
+  const isDeadlineReached = isSubmissionDeadlineReached(deadlineIso);
   const canEdit = !isDeadlineReached;
-  const deadlineLabel = getDeadlineLabel(regulations);
+  const deadlineLabel = getActiveDeadlineLabel(regulations);
+  const academicYear = getCurrentAcademicYear();
+  const semesterLabel = getCurrentSemesterLabel(regulations);
 
   if (!user?.facultyId || !user?.group) {
     return (
@@ -75,7 +69,7 @@ export default function ApplicationWorkspace() {
   const ensureSubmission = async () => {
     if (submissions.find((s) => s.id === submission.id)) return submission;
     const created = await dataApi.createSubmission({
-      academicYear: CURRENT_ACADEMIC_YEAR,
+      academicYear,
       status: 'draft',
     });
     dispatch(setSubmissions([...submissions, created]));
@@ -198,7 +192,7 @@ export default function ApplicationWorkspace() {
         <header className="page-header">
           <h1>Таблица достижений</h1>
           <p>
-            Заявление на ПГАС · {CURRENT_ACADEMIC_YEAR} семестр. Лимиты по направлениям — в{' '}
+            Заявление на ПГАС · {semesterLabel}. Лимиты по направлениям — в{' '}
             <Link to="/regulations">регламенте</Link>.
           </p>
         </header>

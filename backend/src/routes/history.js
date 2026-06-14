@@ -7,23 +7,38 @@ const router = Router();
 
 router.use(authRequired);
 
-const ALLOWED_ACTIONS = new Set(['create', 'update', 'delete', 'review']);
+const ALLOWED_ACTIONS = new Set([
+  'create',
+  'update',
+  'delete',
+  'review',
+  'login',
+  'logout',
+  'register',
+]);
+
 const ALLOWED_ENTITIES = new Set([
+  'auth.login',
+  'auth.logout',
+  'auth.register',
   'regulations',
   'commission.review',
+  'admin.users',
   'users',
   'faculties',
   'groups',
   'tooltips',
   'directions',
+  'scoring',
   'general',
 ]);
 
-router.get('/', requireRoles('admin', 'commission'), async (_req, res, next) => {
+router.get('/', requireRoles('admin', 'commission'), async (req, res, next) => {
   try {
+    const take = req.auth.role === 'admin' ? 500 : 200;
     const entries = await prisma.historyEntry.findMany({
       orderBy: { createdAt: 'desc' },
-      take: 200,
+      take,
     });
     res.json(entries);
   } catch (error) {

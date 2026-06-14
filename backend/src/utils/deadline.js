@@ -1,17 +1,10 @@
 import { prisma } from '../db.js';
 import { config } from '../config.js';
 import { createHttpError } from './http.js';
-import { parseDeadlineIsoFromRegulation } from './regulationDeadline.js';
-
-function isPastDeadlineIso(iso) {
-  if (!iso) return false;
-  const ts = new Date(iso).getTime();
-  if (!Number.isFinite(ts)) return false;
-  return Date.now() > ts;
-}
+import { getActiveDeadlineIso, isDeadlineReached } from './regulationDeadline.js';
 
 export function isDeadlineReachedFromIso(iso) {
-  return isPastDeadlineIso(iso);
+  return isDeadlineReached(iso);
 }
 
 export async function resolveSubmissionDeadlineIso() {
@@ -19,16 +12,16 @@ export async function resolveSubmissionDeadlineIso() {
     return config.submissionDeadlineIso;
   }
   const regulation = await prisma.regulation.findUnique({ where: { id: 1 } });
-  return parseDeadlineIsoFromRegulation(regulation);
+  return getActiveDeadlineIso(regulation);
 }
 
-export async function isDeadlineReached() {
+export async function isDeadlineReachedNow() {
   const iso = await resolveSubmissionDeadlineIso();
-  return isPastDeadlineIso(iso);
+  return isDeadlineReached(iso);
 }
 
 export async function assertDeadlineOpen() {
-  if (await isDeadlineReached()) {
+  if (await isDeadlineReachedNow()) {
     throw createHttpError(
       409,
       'Срок подачи заявлений завершен. Редактирование достижений заблокировано.'

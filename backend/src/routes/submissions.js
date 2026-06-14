@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError } from '../utils/http.js';
 import { assertDeadlineOpen } from '../utils/deadline.js';
+import { getAcademicYearVariants, getCurrentAcademicYear } from '../utils/academicYear.js';
 
 const router = Router();
 
@@ -54,10 +55,11 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
   try {
     await assertDeadlineOpen();
     const body = req.body || {};
+    const academicYear = String(body.academicYear || getCurrentAcademicYear());
     const existing = await prisma.submission.findFirst({
       where: {
         userId: req.auth.id,
-        academicYear: String(body.academicYear || '2025-2026'),
+        academicYear,
       },
     });
     if (existing) {
@@ -67,7 +69,7 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
       data: {
         id: `sub-${req.auth.id}-${Date.now()}`,
         userId: req.auth.id,
-        academicYear: String(body.academicYear || '2025-2026'),
+        academicYear,
         status: 'draft',
         submittedAt: null,
       },

@@ -627,3 +627,17 @@
   border-radius: 10px;
   background: #f9fafb;
 }
+
+.deadline-editor__datetime {
+  width: 100%;
+  max-width: 100%;
+}
+
+.deadline-editor__preview {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius);
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  font-size: 0.9rem;
+}

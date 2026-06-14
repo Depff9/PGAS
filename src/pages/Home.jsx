@@ -4,16 +4,7 @@ import TooltipInfo from '../components/TooltipInfo';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
 import { UNIVERSITY } from '../config/university';
-
-function getDeadlineLabel(regulations) {
-  const deadlineSection = regulations.sections?.find((s) => s.id === 'r2');
-  const content = deadlineSection?.content || '';
-  const explicit = content.match(/по\s+(\d{1,2}\s+\S+)/i)?.[1];
-  if (explicit) return explicit;
-
-  const allDates = [...content.matchAll(/(\d{1,2}\s+\S+)/g)].map((m) => m[1]);
-  return allDates.at(-1) || '30 ноября';
-}
+import { getActiveDeadlineLabel } from '../utils/submissionDeadlines';
 
 export default function Home() {
   const user = useAppSelector((s) => s.auth.user);
@@ -28,7 +19,7 @@ export default function Home() {
           ? '/application/workspace'
           : '/register';
 
-  const deadlineText = getDeadlineLabel(regulations);
+  const deadlineText = getActiveDeadlineLabel(regulations);
 
   return (
     <div className="app-shell">

@@ -9,6 +9,7 @@ import {
   getSubmissionAchievements,
   getSubmissionTotalScore,
   countFilledAchievements,
+  isCurrentPeriodSubmission,
 } from '../utils/submissions';
 import { findFaculty, getFacultyLabel } from '../mock/faculties';
 import SortableHeader from '../components/SortableHeader';
@@ -46,7 +47,13 @@ export default function CommissionApplications() {
           };
         })
         .filter(Boolean)
-        .filter((row) => row.hasSubmitted && row.filled > 0 && row.hasVisibleDirection),
+        .filter(
+          (row) =>
+            isCurrentPeriodSubmission(row.sub) &&
+            row.hasSubmitted &&
+            row.filled > 0 &&
+            row.hasVisibleDirection
+        ),
     [submissions, users, achievements, faculties, allowedDirections]
   );
 
