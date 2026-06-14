@@ -109,8 +109,8 @@ export default function ChangeHistory() {
           </table>
         </div>
       ) : (
-        <div className="table-wrap table-wrap--auto archive-table-wrap">
-          <table className="data-table data-table--adaptive archive-table">
+        <div className="table-wrap archive-table-wrap">
+          <table className="data-table archive-table">
             <thead>
               <tr>
                 <th>

@@ -10,19 +10,19 @@
 }
 
 .archive-table-wrap {
-  overflow-x: visible;
+  overflow-x: hidden;
 }
 
 .archive-table {
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .archive-table th:nth-child(1),
-.archive-table td:nth-child(1) { width: 14%; }
+.archive-table td:nth-child(1) { width: 15%; }
 .archive-table th:nth-child(2),
-.archive-table td:nth-child(2) { width: 16%; }
+.archive-table td:nth-child(2) { width: 18%; }
 .archive-table th:nth-child(3),
-.archive-table td:nth-child(3) { width: 11%; }
+.archive-table td:nth-child(3) { width: 17%; }
 .archive-table th:nth-child(4),
 .archive-table td:nth-child(4) { width: 8%; }
 .archive-table th:nth-child(5),
@@ -30,9 +30,16 @@
 .archive-table th:nth-child(6),
 .archive-table td:nth-child(6) { width: 11%; }
 .archive-table th:nth-child(7),
-.archive-table td:nth-child(7) { width: 21%; }
+.archive-table td:nth-child(7) { width: 15%; }
 .archive-table th:nth-child(8),
-.archive-table td:nth-child(8) { width: 11%; min-width: 120px; }
+.archive-table td:nth-child(8) { width: 8%; min-width: 96px; }
+
+.archive-table th,
+.archive-table td {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
 
 .data-table--adaptive {
   table-layout: fixed;
