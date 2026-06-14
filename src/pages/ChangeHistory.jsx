@@ -46,6 +46,18 @@ const SUBMISSION_STATUS_LABELS = {
   submitted: 'Подано',
 };
 
+function formatArchiveDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export default function ChangeHistory() {
   const user = useAppSelector((s) => s.auth.user);
   const history = useAppSelector((s) => s.data.history);
@@ -263,7 +275,7 @@ export default function ChangeHistory() {
                 sortedArchived.map(({ sub, student, faculty, achievementsCount, totalScore, isHistorical }) => (
                   <tr key={sub.id}>
                     <td>
-                      {new Date(sub.updatedAt || sub.createdAt).toLocaleString('ru-RU')}
+                      {formatArchiveDate(sub.updatedAt || sub.createdAt)}
                       {isHistorical && (
                         <span className="form-hint" style={{ display: 'block' }}>
                           архив
