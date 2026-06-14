@@ -154,6 +154,11 @@ export const dataApi = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  createDirection: (payload) =>
+    apiRequest('/reference/directions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   createFaculty: (payload) =>
     apiRequest('/reference/faculties', { method: 'POST', body: JSON.stringify(payload) }),

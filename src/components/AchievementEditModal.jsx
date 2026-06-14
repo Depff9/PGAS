@@ -19,6 +19,18 @@ export default function AchievementEditModal({
   const [attachments, setAttachments] = useState(achievement?.attachments || []);
   const [error, setError] = useState('');
   const [fileError, setFileError] = useState('');
+  const hasUnsavedChanges =
+    title !== (achievement?.title || '') ||
+    description !== (achievement?.description || '') ||
+    achievementLevel !== (achievement?.achievementLevel || 'faculty') ||
+    JSON.stringify(attachments) !== JSON.stringify(achievement?.attachments || []);
+
+  const handleClose = () => {
+    if (hasUnsavedChanges && !confirm('Есть несохраненные изменения. Закрыть без сохранения?')) {
+      return;
+    }
+    onClose();
+  };
 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
@@ -70,7 +82,7 @@ export default function AchievementEditModal({
             <h2>{achievement?.id ? 'Достижение' : 'Новое достижение'}</h2>
             <p className="form-hint">{direction?.title}</p>
           </div>
-          <button type="button" className="modal__close" onClick={onClose}>
+          <button type="button" className="modal__close" onClick={handleClose}>
             ×
           </button>
         </header>
@@ -172,7 +184,7 @@ export default function AchievementEditModal({
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={onClose}
+            onClick={handleClose}
             title="Закрыть форму"
           >
             <TooltipInfo fieldKey="application.cancel" />

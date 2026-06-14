@@ -23,7 +23,7 @@ export default function Login() {
     if (from) return navigate(from, { replace: true });
     if (role === ROLES.ADMIN) return navigate('/admin', { replace: true });
     if (role === ROLES.COMMISSION) return navigate('/commission', { replace: true });
-    return navigate('/profile', { replace: true });
+    return navigate('/applications', { replace: true });
   };
 
   const handleSubmit = async (e) => {

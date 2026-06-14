@@ -10,6 +10,11 @@ export default function AdminDirections() {
   const directions = useAppSelector((s) => s.data.directions);
   const [draftDirections, setDraftDirections] = useState(directions);
   const [requestError, setRequestError] = useState('');
+  const [newDirection, setNewDirection] = useState({
+    title: '',
+    shortTitle: '',
+    description: '',
+  });
   const hasChanges = useMemo(
     () => JSON.stringify(draftDirections) !== JSON.stringify(directions),
     [draftDirections, directions]
@@ -42,6 +47,27 @@ export default function AdminDirections() {
     if (hasChanges && !confirm('Отменить несохраненные изменения в направлениях?')) return;
     setDraftDirections(directions);
   };
+  const addDirection = async () => {
+    setRequestError('');
+    if (!newDirection.title.trim() || !newDirection.shortTitle.trim()) {
+      setRequestError('Для нового направления заполните название и краткое название');
+      return;
+    }
+    const payload = {
+      id: `d${Date.now()}`,
+      title: newDirection.title.trim(),
+      shortTitle: newDirection.shortTitle.trim(),
+      description: newDirection.description.trim(),
+      active: true,
+    };
+    const created = await dataApi.createDirection(payload).catch((error) => {
+      setRequestError(error.message || 'Не удалось добавить направление');
+      return null;
+    });
+    if (!created?.id) return;
+    dispatch(setDirections([...directions, created]));
+    setNewDirection({ title: '', shortTitle: '', description: '' });
+  };
 
   return (
     <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
@@ -66,6 +92,36 @@ export default function AdminDirections() {
           disabled={!hasChanges}
         >
           Отменить изменения
+        </button>
+      </div>
+      <div className="card editor-block" style={{ marginBottom: '1rem' }}>
+        <h3 style={{ marginTop: 0 }}>Добавить новое направление</h3>
+        <div className="form-row form-row--2">
+          <div className="form-group">
+            <label>Название</label>
+            <input
+              value={newDirection.title}
+              onChange={(e) => setNewDirection({ ...newDirection, title: e.target.value })}
+            />
+          </div>
+          <div className="form-group">
+            <label>Краткое название</label>
+            <input
+              value={newDirection.shortTitle}
+              onChange={(e) => setNewDirection({ ...newDirection, shortTitle: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="form-group">
+          <label>Описание</label>
+          <textarea
+            value={newDirection.description}
+            onChange={(e) => setNewDirection({ ...newDirection, description: e.target.value })}
+            rows={2}
+          />
+        </div>
+        <button type="button" className="btn btn--primary" onClick={addDirection}>
+          Добавить направление
         </button>
       </div>
 

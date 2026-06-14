@@ -160,6 +160,12 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.tooltip-info {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+}
+
 .tooltip-info__popup {
   position: absolute;
   left: 0;
@@ -188,6 +194,22 @@
   background: #fff;
   color: var(--color-primary);
   border-color: #fff;
+}
+
+.hero__stat .tooltip-info__btn {
+  width: 1.05rem;
+  height: 1.05rem;
+  font-size: 0.65rem;
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--color-primary);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.hero__stat .tooltip-info__btn:hover,
+.hero__stat .tooltip-info--open .tooltip-info__btn {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
 }
 
 .modal .tooltip-info__popup {

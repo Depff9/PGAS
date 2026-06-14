@@ -122,6 +122,30 @@ router.get('/directions', authRequired, async (_req, res, next) => {
   }
 });
 
+router.post(
+  '/directions',
+  authRequired,
+  requireRoles('commission', 'admin'),
+  async (req, res, next) => {
+    try {
+      const payload = req.body || {};
+      const created = await prisma.direction.create({
+        data: {
+          id: payload.id || `d${Date.now()}`,
+          title: String(payload.title || '').trim(),
+          shortTitle: String(payload.shortTitle || '').trim(),
+          description: String(payload.description || '').trim(),
+          icon: payload.icon || null,
+          active: payload.active ?? true,
+        },
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 router.patch(
   '/directions/:id',
   authRequired,
