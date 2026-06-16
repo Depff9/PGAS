@@ -100,23 +100,46 @@ export default function AttachmentPreviewModal({
   );
 }
 
-export function AttachmentList({ attachments, achievementId = null, secureDownload = false }) {
+export function AttachmentList({
+  attachments,
+  achievementId = null,
+  secureDownload = false,
+  onRemove = null,
+}) {
   const [previewFile, setPreviewFile] = useState(null);
 
   if (!attachments?.length) return null;
 
   return (
     <>
-      <ul className="file-list">
+      <ul
+        className={`file-list${onRemove ? ' file-list--editable' : ' file-list--readonly'}`}
+      >
         {attachments.map((f) => (
-          <li key={f.id}>
+          <li key={f.id} className="file-list__row">
             <button
               type="button"
-              className="btn btn--ghost btn--sm file-list__link"
+              className="file-list__name"
               onClick={() => setPreviewFile(f)}
             >
               {f.name}
             </button>
+            {onRemove && (
+              <button
+                type="button"
+                className="btn btn--ghost btn--icon file-list__remove"
+                onClick={() => onRemove(f.id)}
+                aria-label={`Удалить файл ${f.name}`}
+                title="Удалить"
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"
+                  />
+                </svg>
+              </button>
+            )}
           </li>
         ))}
       </ul>

@@ -1,7 +1,7 @@
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { getCurrentAcademicYear, isSameAcademicYear } from './academicYear';
-import { getCurrentSubmissionPeriod, normalizeSubmissionPeriod } from './submissionPeriod';
+import { getCurrentSubmissionPeriod, normalizeSubmissionPeriod, getCalendarSubmissionPeriod } from './submissionPeriod';
 import { getEffectiveScore } from './scoring';
 import {
   normalizeSubmissionDeadlines,
@@ -36,15 +36,14 @@ export function getStudentSubmission(
 export function isHistoricalSubmission(submission, regulations, referenceDate = new Date()) {
   if (!submission) return false;
 
-  const now = referenceDate.getTime();
   if (!isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate))) {
     return true;
   }
 
   const deadlines = normalizeSubmissionDeadlines(regulations);
-  const subPeriod = normalizeSubmissionPeriod(submission.period);
-  const endsAt = deadlines[subPeriod]?.endsAt;
-  return isDeadlineReached(endsAt, now);
+  const calendarPeriod = getCalendarSubmissionPeriod(referenceDate);
+  const calendarEndsAt = deadlines[calendarPeriod]?.endsAt;
+  return isDeadlineReached(calendarEndsAt, referenceDate.getTime());
 }
 
 export function isCurrentPeriodSubmission(submission, regulations, referenceDate = new Date()) {

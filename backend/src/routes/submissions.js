@@ -3,10 +3,11 @@ import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError } from '../utils/http.js';
 import { assertDeadlineOpen } from '../utils/deadline.js';
-import { getAcademicYearVariants, getCurrentAcademicYear } from '../utils/academicYear.js';
+import { getCurrentAcademicYear } from '../utils/academicYear.js';
 import {
   normalizeSubmissionPeriod,
   resolveCurrentSubmissionPeriod,
+  getCalendarSubmissionPeriod,
 } from '../utils/submissionPeriod.js';
 import {
   assertAchievementDescription,
@@ -148,6 +149,10 @@ router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
       }
     }
 
+    const regulation = await prisma.regulation.findUnique({ where: { id: 1 } });
+    const currentYear = getCurrentAcademicYear();
+    const calendarPeriod = getCalendarSubmissionPeriod(regulation);
+
     const updated = await prisma.$transaction(async (tx) => {
       await tx.achievement.updateMany({
         where: {
@@ -161,6 +166,8 @@ router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
       return tx.submission.update({
         where: { id },
         data: {
+          academicYear: currentYear,
+          period: calendarPeriod,
           status: 'submitted',
           submittedAt: new Date(),
           updatedAt: new Date(),

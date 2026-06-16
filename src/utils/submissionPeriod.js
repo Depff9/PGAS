@@ -12,6 +12,11 @@ export const PERIOD_SHORT_LABELS = {
 export function getCurrentSubmissionPeriod(regulations, referenceDate = new Date()) {
   const configured = regulations?.submissionDeadlines?.activePeriod;
   if (configured === 'winter' || configured === 'summer') return configured;
+  return getCalendarSubmissionPeriod(referenceDate);
+}
+
+/** Период по календарю (июнь–август — летняя сессия, иначе зимняя). */
+export function getCalendarSubmissionPeriod(referenceDate = new Date()) {
   const month = referenceDate.getMonth();
   return month >= 5 && month <= 7 ? SUBMISSION_PERIODS.SUMMER : SUBMISSION_PERIODS.WINTER;
 }

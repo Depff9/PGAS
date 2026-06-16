@@ -148,22 +148,12 @@ export default function AchievementEditModal({
           />
           {fileError && <p className="form-hint" style={{ color: '#b91c1c' }}>{fileError}</p>}
           {attachments.length > 0 && (
-            <>
-              <AttachmentList attachments={attachments} />
-              <ul className="file-list file-list--actions">
-                {attachments.map((f) => (
-                  <li key={f.id}>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      onClick={() => setAttachments(attachments.filter((x) => x.id !== f.id))}
-                    >
-                      Удалить «{f.name}»
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
+            <AttachmentList
+              attachments={attachments}
+              onRemove={(fileId) =>
+                setAttachments(attachments.filter((item) => item.id !== fileId))
+              }
+            />
           )}
         </div>
         <p className="form-hint" style={{ marginBottom: '0.75rem' }}>

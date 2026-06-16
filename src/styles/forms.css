@@ -378,10 +378,44 @@
 }
 
 .file-list li {
+  margin-bottom: 0.35rem;
+}
+
+.file-list--editable .file-list__row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.file-list__name {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.file-list__name:hover {
+  text-decoration: underline;
+}
+
+.file-list__remove {
+  flex-shrink: 0;
+  color: #b91c1c;
+}
+
+.file-list__remove:hover {
+  background: #fef2f2;
 }
 
 .template-chips {
@@ -679,11 +713,12 @@
   background: #fff;
 }
 
-.file-list__link {
-  text-align: left;
-  padding: 0;
+
+.file-list--readonly .file-list__row {
+  display: flex;
+  align-items: center;
 }
 
-.file-list--actions {
-  margin-top: 0.5rem;
+.file-list--readonly .file-list__name {
+  padding: 0.35rem 0;
 }
