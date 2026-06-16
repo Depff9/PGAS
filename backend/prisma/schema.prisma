@@ -91,6 +91,7 @@ model Submission {
   id           String           @id
   userId       String
   academicYear String
+  period       String           @default("summer")
   status       SubmissionStatus
   submittedAt  DateTime?
   createdAt    DateTime         @default(now())
@@ -98,6 +99,8 @@ model Submission {
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievements Achievement[]
+
+  @@unique([userId, academicYear, period])
 }
 
 model Achievement {
@@ -131,6 +134,7 @@ model Regulation {
   defaultMaxPerDirection Int
   directionLimits        Json
   submissionDeadlines    Json?
+  eventLevels            Json?
   sections               Json
   createdAt              DateTime @default(now())
 
@@ -159,14 +163,6 @@ model Notification {
 
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievement   Achievement? @relation(fields: [achievementId], references: [id], onDelete: SetNull)
-}
-
-model ScoringMatrix {
-  id               Int      @id @default(1)
-  updatedAt        DateTime
-  levels           Json
-  descriptionBonuses Json
-  createdAt        DateTime @default(now())
 }
 
 model HistoryEntry {

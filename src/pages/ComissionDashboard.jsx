@@ -44,7 +44,7 @@ export default function ComissionDashboard() {
             icon="🎯"
             value={directions.length}
             title="Направления"
-            subtitle="5 направлений ПГАС"
+            subtitle={`${directions.length} направлений`}
           />
         )}
         <DashboardCard

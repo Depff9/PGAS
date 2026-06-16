@@ -21,7 +21,7 @@ import {
 } from '../utils/notifications';
 import { getEffectiveScore } from '../utils/scoring';
 import { SUBMISSION_STATUS_LABELS } from '../constants/submissions';
-import { createHistoryEntry } from '../utils/history';
+import { createHistoryEntry, mapHistoryEntryFromApi } from '../utils/history';
 import { dataApi } from '../api/dataApi';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
@@ -46,10 +46,11 @@ export default function SubmissionReview() {
   const subAch = submission
     ? getSubmissionAchievements(achievements, submission.id).filter((a) => a.title)
     : [];
-  const isHistorical = isHistoricalSubmission(submission);
+  const isHistorical = isHistoricalSubmission(submission, regulations);
   const readOnly = archiveMode && isHistorical;
 
   const [reviewId, setReviewId] = useState(null);
+  const [reviewError, setReviewError] = useState('');
   const reviewAch = subAch.find((a) => a.id === reviewId);
   const reviewDir = directions.find((d) => d.id === reviewAch?.directionId);
 
@@ -80,50 +81,64 @@ export default function SubmissionReview() {
   }
 
   const saveAch = async (updated) => {
-    const historyEntry = createHistoryEntry({
-      category: 'commission.review',
-      action: 'review',
-      summary: `Проверено достижение "${updated.title}" (${ACHIEVEMENT_STATUS_LABELS[updated.status]})`,
-      userId: user.id,
-      userName: formatFullName(user),
-      targetId: submission.id,
-      metadata: { achievementId: updated.id, status: updated.status },
-    });
-    const merged = achievements.map((a) => (a.id === updated.id ? updated : a));
-    const hasSubmittedAchievements = merged
-      .filter((a) => a.submissionId === submission.id && a.title)
-      .some((a) => a.status === ACHIEVEMENT_STATUS.SUBMITTED);
-    dispatch(setAchievements(merged));
-    const synced = syncSubmissionFromAchievements(
-      {
-        ...submission,
-        status:
-          submission.status === SUBMISSION_STATUS.DRAFT || hasSubmittedAchievements
-            ? SUBMISSION_STATUS.SUBMITTED
-            : submission.status,
-      },
-      merged
-    );
-    dispatch(setSubmissions(submissions.map((s) => (s.id === synced.id ? synced : s))));
-    dispatch(setHistory([historyEntry, ...history]));
-    await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
-    if (shouldNotifyStatus(updated.status)) {
-      const dirTitle = directions.find((d) => d.id === updated.directionId)?.title;
-      const notification = buildStatusNotification(updated, updated.userId, dirTitle);
-      if (notification) {
-        dispatch(setNotifications(appendNotification(notifications, notification)));
-        await dataApi.createNotification(notification).catch(() => null);
-      }
-    }
-    await dataApi
-      .updateAchievement(updated.id, {
+    setReviewError('');
+    try {
+      const savedAchievement = await dataApi.updateAchievement(updated.id, {
         status: updated.status,
         score: updated.score,
         finalScore: updated.finalScore,
         revision: updated.revision,
-      })
-      .catch(() => null);
-    await dataApi.updateSubmissionStatus(submission.id, synced.status).catch(() => null);
+      });
+
+      const merged = achievements.map((a) => (a.id === updated.id ? savedAchievement : a));
+      const hasSubmittedAchievements = merged
+        .filter((a) => a.submissionId === submission.id && a.title)
+        .some((a) => a.status === ACHIEVEMENT_STATUS.SUBMITTED);
+      const synced = syncSubmissionFromAchievements(
+        {
+          ...submission,
+          status:
+            submission.status === SUBMISSION_STATUS.DRAFT || hasSubmittedAchievements
+              ? SUBMISSION_STATUS.SUBMITTED
+              : submission.status,
+        },
+        merged
+      );
+      const savedSubmission = await dataApi.updateSubmissionStatus(submission.id, synced.status);
+
+      dispatch(setAchievements(merged));
+      dispatch(
+        setSubmissions(
+          submissions.map((s) => (s.id === savedSubmission.id ? savedSubmission : s))
+        )
+      );
+
+      const historyEntry = createHistoryEntry({
+        category: 'commission.review',
+        action: 'review',
+        summary: `Проверено достижение "${updated.title}" (${ACHIEVEMENT_STATUS_LABELS[updated.status]})`,
+        userId: user.id,
+        userName: formatFullName(user),
+        targetId: submission.id,
+        metadata: { achievementId: updated.id, status: updated.status },
+      });
+      const rawHistory = await dataApi.saveHistoryEntry(historyEntry);
+      dispatch(setHistory([mapHistoryEntryFromApi(rawHistory) || historyEntry, ...history]));
+
+      if (shouldNotifyStatus(updated.status)) {
+        const dirTitle = directions.find((d) => d.id === updated.directionId)?.title;
+        const notification = buildStatusNotification(updated, updated.userId, dirTitle);
+        if (notification) {
+          const createdNotification = await dataApi.createNotification(notification);
+          dispatch(
+            setNotifications(appendNotification(notifications, createdNotification || notification))
+          );
+        }
+      }
+    } catch (error) {
+      setReviewError(error.message || 'Не удалось сохранить результат проверки');
+      throw error;
+    }
   };
 
   return (
@@ -139,10 +154,12 @@ export default function SubmissionReview() {
         <h1>Заявление: {formatFullName(student)}</h1>
         <p>
           {student.group} · {submission.academicYear} ·{' '}
-          {SUBMISSION_STATUS_LABELS[submission.status]} · Сумма:{' '}
-          {getSubmissionTotalScore(subAch)} баллов
+          {SUBMISSION_STATUS_LABELS[submission.status]} · Сумма одобренных баллов:{' '}
+          {getSubmissionTotalScore(subAch)}
         </p>
       </header>
+
+      {reviewError && <div className="alert alert--error">{reviewError}</div>}
 
       {readOnly && (
         <div className="alert alert--info">

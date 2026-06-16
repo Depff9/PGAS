@@ -6,15 +6,13 @@ import { getEffectiveScore } from './scoring';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { isCurrentPeriodSubmission } from './submissions';
 
-const COUNTED_STATUSES = [
-  ACHIEVEMENT_STATUS.SUBMITTED,
-  ACHIEVEMENT_STATUS.APPROVED,
-  ACHIEVEMENT_STATUS.REVISION,
-];
+const MIN_RATING_SCORE = 25;
 
-function getCurrentSubmissionIds(submissions = []) {
+function getCurrentSubmissionIds(submissions = [], regulations = null) {
   return new Set(
-    submissions.filter(isCurrentPeriodSubmission).map((submission) => submission.id)
+    submissions
+      .filter((submission) => isCurrentPeriodSubmission(submission, regulations))
+      .map((submission) => submission.id)
   );
 }
 
@@ -24,23 +22,34 @@ function isCurrentPeriodAchievement(achievement, currentSubmissionIds) {
   return currentSubmissionIds.has(achievement.submissionId);
 }
 
-export function getStudentTotalScore(userId, achievements, submissions = null) {
+export function getStudentTotalScore(userId, achievements, submissions = null, regulations = null) {
   const currentSubmissionIds =
-    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
+    submissions && submissions.length > 0
+      ? getCurrentSubmissionIds(submissions, regulations)
+      : null;
   return achievements
     .filter(
       (a) =>
         a.userId === userId &&
-        COUNTED_STATUSES.includes(a.status) &&
+        a.status === ACHIEVEMENT_STATUS.APPROVED &&
         isCurrentPeriodAchievement(a, currentSubmissionIds)
     )
     .reduce((sum, a) => sum + getEffectiveScore(a), 0);
 }
 
-export function buildFacultyRating(facultyId, users, achievements, faculties, submissions = null) {
+export function buildFacultyRating(
+  facultyId,
+  users,
+  achievements,
+  faculties,
+  submissions = null,
+  regulations = null
+) {
   const faculty = findFaculty(faculties, facultyId);
   const currentSubmissionIds =
-    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
+    submissions && submissions.length > 0
+      ? getCurrentSubmissionIds(submissions, regulations)
+      : null;
   const students = users.filter(
     (u) => u.role === ROLES.STUDENT && u.facultyId === facultyId
   );
@@ -48,14 +57,15 @@ export function buildFacultyRating(facultyId, users, achievements, faculties, su
   const rows = students
     .map((student) => ({
       student,
-      totalScore: getStudentTotalScore(student.id, achievements, submissions),
+      totalScore: getStudentTotalScore(student.id, achievements, submissions, regulations),
       achievementsCount: achievements.filter(
         (a) =>
           a.userId === student.id &&
-          COUNTED_STATUSES.includes(a.status) &&
+          a.status === ACHIEVEMENT_STATUS.APPROVED &&
           isCurrentPeriodAchievement(a, currentSubmissionIds)
       ).length,
     }))
+    .filter((row) => row.totalScore >= MIN_RATING_SCORE)
     .sort(
       (a, b) =>
         b.totalScore - a.totalScore ||
@@ -73,7 +83,7 @@ export function buildFacultyRating(facultyId, users, achievements, faculties, su
   };
 }
 
-export function buildOverallRating(users, achievements, faculties, submissions = []) {
+export function buildOverallRating(users, achievements, faculties, submissions = [], regulations = null) {
   const studentById = new Map(
     users.filter((u) => u.role === ROLES.STUDENT).map((u) => [u.id, u])
   );
@@ -88,19 +98,17 @@ export function buildOverallRating(users, achievements, faculties, submissions =
   });
 
   const currentSubmissions = submissions.filter(
-    (s) => isCurrentPeriodSubmission(s) && s.status && s.status !== SUBMISSION_STATUS.DRAFT
+    (s) =>
+      isCurrentPeriodSubmission(s, regulations) &&
+      s.status &&
+      s.status !== SUBMISSION_STATUS.DRAFT &&
+      s.status !== SUBMISSION_STATUS.REJECTED
   );
   const currentSubmissionIds =
-    submissions && submissions.length > 0 ? getCurrentSubmissionIds(submissions) : null;
+    submissions && submissions.length > 0
+      ? getCurrentSubmissionIds(submissions, regulations)
+      : null;
   const submittedUserIds = new Set(currentSubmissions.map((s) => s.userId));
-  achievements
-    .filter(
-      (a) =>
-        a.title &&
-        COUNTED_STATUSES.includes(a.status) &&
-        isCurrentPeriodAchievement(a, currentSubmissionIds)
-    )
-    .forEach((a) => submittedUserIds.add(a.userId));
 
   return [...studentById.values()]
     .filter((u) => submittedUserIds.has(u.id))
@@ -110,15 +118,16 @@ export function buildOverallRating(users, achievements, faculties, submissions =
         student,
         fullName: formatFullName(student),
         facultyLabel: faculty ? getFacultyLabel(faculty) : '—',
-        totalScore: getStudentTotalScore(student.id, achievements, submissions),
+        totalScore: getStudentTotalScore(student.id, achievements, submissions, regulations),
         achievementsCount: achievements.filter(
           (a) =>
             a.userId === student.id &&
-            COUNTED_STATUSES.includes(a.status) &&
+            a.status === ACHIEVEMENT_STATUS.APPROVED &&
             isCurrentPeriodAchievement(a, currentSubmissionIds)
         ).length,
       };
     })
+    .filter((row) => row.totalScore >= MIN_RATING_SCORE)
     .sort(
       (a, b) =>
         b.totalScore - a.totalScore ||

@@ -62,7 +62,7 @@ export default function Register() {
       });
       dispatch(loginSuccess(user));
       await dispatch(reloadData());
-      navigate('/profile');
+      navigate('/applications');
     } catch (error) {
       setError(error.message || 'Ошибка регистрации');
     }

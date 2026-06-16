@@ -4,6 +4,15 @@ import { authRequired, requireRoles } from '../middleware/auth.js';
 import { createHttpError } from '../utils/http.js';
 import { assertDeadlineOpen } from '../utils/deadline.js';
 import { getAcademicYearVariants, getCurrentAcademicYear } from '../utils/academicYear.js';
+import {
+  normalizeSubmissionPeriod,
+  resolveCurrentSubmissionPeriod,
+} from '../utils/submissionPeriod.js';
+import {
+  assertAchievementDescription,
+  assertAchievementTitle,
+} from '../utils/achievementValidation.js';
+import { enforceMinimumScoreRules } from '../utils/minScore.js';
 
 const router = Router();
 
@@ -28,6 +37,10 @@ router.use(authRequired);
 
 router.get('/', async (req, res, next) => {
   try {
+    if (req.auth.role !== 'student') {
+      await enforceMinimumScoreRules();
+    }
+
     const where =
       req.auth.role === 'student'
         ? { userId: req.auth.id }
@@ -56,20 +69,27 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
     await assertDeadlineOpen();
     const body = req.body || {};
     const academicYear = String(body.academicYear || getCurrentAcademicYear());
+    const period = normalizeSubmissionPeriod(
+      body.period || (await resolveCurrentSubmissionPeriod())
+    );
+
     const existing = await prisma.submission.findFirst({
       where: {
         userId: req.auth.id,
         academicYear,
+        period,
       },
     });
     if (existing) {
       return res.status(200).json(existing);
     }
+
     const submission = await prisma.submission.create({
       data: {
-        id: `sub-${req.auth.id}-${Date.now()}`,
+        id: `sub-${req.auth.id}-${period}-${Date.now()}`,
         userId: req.auth.id,
         academicYear,
+        period,
         status: 'draft',
         submittedAt: null,
       },
@@ -81,7 +101,7 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
   }
 });
 
-router.patch('/:id/status', requireRoles('commission', 'admin'), async (req, res, next) => {
+router.patch('/:id/status', requireRoles('commission'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const status = String(req.body?.status || '').trim();
@@ -108,11 +128,32 @@ router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
     const submission = await prisma.submission.findUnique({ where: { id } });
     if (!submission) throw createHttpError(404, 'Заявка не найдена');
     if (submission.userId !== req.auth.id) throw createHttpError(403, 'Нет доступа к заявке');
+    if (submission.status !== 'draft' && submission.status !== 'revision') {
+      throw createHttpError(409, 'Заявление уже подано или закрыто для повторной подачи');
+    }
+
+    const achievements = await prisma.achievement.findMany({
+      where: { submissionId: id, userId: req.auth.id },
+    });
+    const filled = achievements.filter((item) => String(item.title || '').trim());
+    if (filled.length === 0) {
+      throw createHttpError(400, 'Добавьте хотя бы одно достижение перед подачей заявления');
+    }
+
+    for (const item of filled) {
+      if (item.status === 'draft' || item.status === 'revision') {
+        assertAchievementDescription(item.description);
+      }
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.achievement.updateMany({
-        where: { submissionId: id, userId: req.auth.id, status: 'draft' },
-        data: { status: 'submitted', updatedAt: new Date() },
+        where: {
+          submissionId: id,
+          userId: req.auth.id,
+          status: { in: ['draft', 'revision'] },
+        },
+        data: { status: 'submitted', updatedAt: new Date(), revision: null },
       });
 
       return tx.submission.update({

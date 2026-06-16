@@ -1,0 +1,99 @@
+erDiagram
+    User ||--o{ Submission : "подаёт"
+    User ||--o{ Achievement : "создаёт"
+    User ||--o{ Notification : "получает"
+    User ||--o{ HistoryEntry : "инициирует"
+    User }o--|| Faculty : "обучается на"
+    User ||--o{ Regulation : "редактирует"
+
+    Faculty ||--o{ Group : "содержит"
+    Faculty ||--o{ User : "включает"
+
+    Submission ||--o{ Achievement : "содержит"
+    Direction ||--o{ Achievement : "классифицирует"
+
+    Achievement ||--o{ Notification : "связано с"
+
+    User {
+        string id PK
+        string email UK
+        string role
+        string facultyId FK
+        string group
+        json permissions
+    }
+
+    Faculty {
+        string id PK
+        string shortName
+        string name
+    }
+
+    Group {
+        string id PK
+        string name
+        string facultyId FK
+    }
+
+    Submission {
+        string id PK
+        string userId FK
+        string academicYear
+        string status
+        datetime submittedAt
+    }
+
+    Achievement {
+        string id PK
+        string submissionId FK
+        string userId FK
+        string directionId FK
+        int slotIndex
+        string status
+        int finalScore
+        json attachments
+    }
+
+    Direction {
+        string id PK
+        string title
+        string shortTitle
+        boolean active
+    }
+
+    Regulation {
+        int id PK
+        string title
+        int defaultMaxPerDirection
+        json directionLimits
+        json submissionDeadlines
+    }
+
+    ScoringMatrix {
+        int id PK
+        json levels
+        json descriptionBonuses
+    }
+
+    Notification {
+        string id PK
+        string userId FK
+        string achievementId FK
+        string type
+        boolean read
+    }
+
+    HistoryEntry {
+        string id PK
+        string action
+        string entity
+        json payload
+        string createdBy FK
+    }
+
+    Tooltip {
+        string id PK
+        string fieldKey
+        string label
+        string text
+    }

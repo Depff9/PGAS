@@ -17,7 +17,9 @@ export default function Directions() {
       <div className="container page-content">
         <header className="page-header">
           <h1>Направления ПГАС</h1>
-          <p>Пять направлений для подачи заявлений на повышенную стипендию</p>
+          <p>
+            {directions.length} направлений для подачи заявлений на повышенную стипендию
+          </p>
         </header>
 
         <div className="direction-grid">
@@ -40,16 +42,22 @@ export default function Directions() {
         </div>
 
         <div className="card" style={{ marginTop: '1.5rem' }}>
-          <h2 style={{ marginTop: 0 }}>{regulations.title}</h2>
-          <p className="form-hint">
-            Обновлено: {new Date(regulations.updatedAt).toLocaleDateString('ru-RU')}
-          </p>
-          {regulations.sections?.slice(0, 2).map((s) => (
-            <div key={s.id} className="regulation-section regulation-section--readonly">
-              <h3>{s.heading}</h3>
-              <p>{s.content}</p>
-            </div>
-          ))}
+          {regulations ? (
+            <>
+              <h2 style={{ marginTop: 0 }}>{regulations.title}</h2>
+              <p className="form-hint">
+                Обновлено: {new Date(regulations.updatedAt).toLocaleDateString('ru-RU')}
+              </p>
+              {regulations.sections?.slice(0, 2).map((s) => (
+                <div key={s.id} className="regulation-section regulation-section--readonly">
+                  <h3>{s.heading}</h3>
+                  <p>{s.content}</p>
+                </div>
+              ))}
+            </>
+          ) : (
+            <p className="form-hint">Регламент загружается…</p>
+          )}
           <Link to="/regulations" className="btn btn--ghost btn--sm">
             Полный регламент →
           </Link>

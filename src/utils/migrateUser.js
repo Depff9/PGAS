@@ -33,7 +33,6 @@ export function migrateUser(user, faculties) {
         ? {
             canEditRegulations: user.permissions?.canEditRegulations ?? false,
             canEditDirections: user.permissions?.canEditDirections ?? false,
-            canEditScoringMatrix: user.permissions?.canEditScoringMatrix ?? false,
             allowedDirectionIds: user.permissions?.allowedDirectionIds ?? [],
           }
         : null,

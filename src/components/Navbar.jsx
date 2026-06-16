@@ -45,6 +45,9 @@ export default function Navbar() {
               <NavLink to="/directions" className={({ isActive }) => navClass(isActive)}>
                 Направления
               </NavLink>
+              <NavLink to="/regulations" className={({ isActive }) => navClass(isActive)}>
+                Регламент
+              </NavLink>
             </>
           )}
           {user?.role === ROLES.STUDENT && (

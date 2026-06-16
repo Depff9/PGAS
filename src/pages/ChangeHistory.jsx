@@ -65,6 +65,7 @@ export default function ChangeHistory() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const users = useAppSelector((s) => s.data.users);
   const faculties = useAppSelector((s) => s.data.faculties);
+  const regulations = useAppSelector((s) => s.data.regulations);
   const sidebar = user?.role === ROLES.ADMIN ? adminSidebar : commissionSidebar;
   const title = user?.role === ROLES.ADMIN ? 'Администрирование' : 'Кабинет комиссии';
   const isAdmin = user?.role === ROLES.ADMIN;
@@ -100,11 +101,11 @@ export default function ChangeHistory() {
             faculty,
             achievementsCount: subAchievements.length,
             totalScore: getSubmissionTotalScore(subAchievements),
-            isHistorical: isHistoricalSubmission(sub),
+            isHistorical: isHistoricalSubmission(sub, regulations),
           };
         })
         .filter(Boolean),
-    [submissions, users, faculties, achievements]
+    [submissions, users, faculties, achievements, regulations]
   );
 
   const sortedArchived = useMemo(

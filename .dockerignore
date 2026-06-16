@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+.git
+.github
+*.md
+!docs/DOCKER.md
+.env
+.env.*
+!.env.production.example
+backend/.env
+data
+terminals
+mcps
+agent-transcripts
+*.log
+.DS_Store

@@ -5,13 +5,13 @@ import { commissionSidebar } from '../config/navigation';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setRegulations, setHistory } from '../store/dataSlice';
 import { setNotifications } from '../store/dataSlice';
-import { setScoringMatrix } from '../store/dataSlice';
 import { ROLES, formatFullName } from '../mock/users';
-import { createHistoryEntry } from '../utils/history';
+import { createHistoryEntry, mapHistoryEntryFromApi } from '../utils/history';
 import Navbar from '../components/Navbar';
 import { buildRegulationsUpdatedNotification } from '../utils/notifications';
 import { dataApi } from '../api/dataApi';
 import SubmissionDeadlinesEditor from '../components/SubmissionDeadlinesEditor';
+import { DEFAULT_EVENT_LEVELS, getEventLevels } from '../constants/eventLevels';
 import {
   buildDeadlineSectionContent,
   formatDeadlineLabel,
@@ -25,7 +25,6 @@ export default function Regulations({ readOnly = false }) {
   const directions = useAppSelector((s) => s.data.directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const history = useAppSelector((s) => s.data.history);
-  const scoringMatrix = useAppSelector((s) => s.data.scoringMatrix);
   const users = useAppSelector((s) => s.data.users);
   const notifications = useAppSelector((s) => s.data.notifications);
   const canEdit = !readOnly && user?.role === ROLES.COMMISSION;
@@ -41,9 +40,12 @@ export default function Regulations({ readOnly = false }) {
   const [submissionDeadlines, setSubmissionDeadlines] = useState(() =>
     normalizeSubmissionDeadlines(regulations)
   );
+  const [localLevels, setLocalLevels] = useState(
+    getEventLevels(regulations).length ? getEventLevels(regulations) : DEFAULT_EVENT_LEVELS
+  );
   const [deadlineError, setDeadlineError] = useState('');
+  const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [localLevels, setLocalLevels] = useState(scoringMatrix?.levels || []);
 
   useEffect(() => {
     if (!regulations) return;
@@ -52,6 +54,7 @@ export default function Regulations({ readOnly = false }) {
     setDirectionLimits(regulations.directionLimits || {});
     setDefaultMax(regulations.defaultMaxPerDirection ?? 7);
     setSubmissionDeadlines(normalizeSubmissionDeadlines(regulations));
+    setLocalLevels(getEventLevels(regulations));
   }, [regulations?.updatedAt]);
 
   if (shouldRedirect) {
@@ -77,6 +80,7 @@ export default function Regulations({ readOnly = false }) {
 
   const save = async () => {
     setDeadlineError('');
+    setSaveError('');
     try {
       const prepared = prepareRegulationPayload(
         {
@@ -85,6 +89,7 @@ export default function Regulations({ readOnly = false }) {
           sections,
           defaultMaxPerDirection: Number(defaultMax) || 7,
           directionLimits: { ...directionLimits },
+          eventLevels: localLevels,
         },
         submissionDeadlines
       );
@@ -96,6 +101,7 @@ export default function Regulations({ readOnly = false }) {
 
       const payload = {
         ...prepared.payload,
+        eventLevels: localLevels,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.id,
       };
@@ -108,22 +114,10 @@ export default function Regulations({ readOnly = false }) {
         userName: formatFullName(user),
       });
 
-      dispatch(setRegulations(payload));
       const savedRegulations = await dataApi.updateRegulations(payload);
-      if (savedRegulations) {
-        dispatch(setRegulations(savedRegulations));
-        setSubmissionDeadlines(normalizeSubmissionDeadlines(savedRegulations));
-        setSections(savedRegulations.sections || []);
-      }
-
-      const nextMatrix = {
-        ...scoringMatrix,
-        levels: localLevels,
-        updatedAt: new Date().toISOString(),
-      };
-      dispatch(setScoringMatrix(nextMatrix));
-      const savedMatrix = await dataApi.updateScoringMatrix(nextMatrix);
-      if (savedMatrix) dispatch(setScoringMatrix(savedMatrix));
+      dispatch(setRegulations(savedRegulations));
+      setSubmissionDeadlines(normalizeSubmissionDeadlines(savedRegulations));
+      setSections(savedRegulations.sections || []);
 
       const infoNotifications = users
         .filter((u) => u.role === ROLES.STUDENT)
@@ -133,19 +127,25 @@ export default function Regulations({ readOnly = false }) {
             'Сроки или правила подачи заявлений обновлены комиссией.'
           )
         );
-      dispatch(setNotifications([...infoNotifications, ...notifications]));
-      await dataApi.createNotificationsBulk(infoNotifications).catch(() => null);
-      dispatch(
-        setHistory([
-          { ...historyEntry, snapshot: payload },
-          ...history,
-        ])
-      );
-      await dataApi.saveHistoryEntry({ ...historyEntry, snapshot: payload }).catch(() => null);
+      if (infoNotifications.length) {
+        await dataApi.createNotificationsBulk(infoNotifications);
+        dispatch(setNotifications([...infoNotifications, ...notifications]));
+      }
+
+      const rawHistory = await dataApi.saveHistoryEntry({
+        ...historyEntry,
+        snapshot: payload,
+      });
+      const mappedHistory = mapHistoryEntryFromApi(rawHistory) || {
+        ...historyEntry,
+        snapshot: payload,
+      };
+      dispatch(setHistory([mappedHistory, ...history]));
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
-      alert(error.message || 'Не удалось сохранить регламент');
+      setSaveError(error.message || 'Не удалось сохранить регламент');
     }
   };
 
@@ -164,6 +164,7 @@ export default function Regulations({ readOnly = false }) {
     submissionDeadlines,
     sections,
   });
+  const eventLevels = getEventLevels(regulations);
 
   const content = (
     <>
@@ -177,6 +178,7 @@ export default function Regulations({ readOnly = false }) {
       </header>
 
       {saved && <div className="alert alert--success">Регламент сохранён</div>}
+      {saveError && <div className="alert alert--error">{saveError}</div>}
 
       <div className="card">
         {canEdit ? (
@@ -191,14 +193,20 @@ export default function Regulations({ readOnly = false }) {
         {canEdit && (
           <div className="editor-block">
             <h3 style={{ marginTop: 0 }}>Уровни мероприятий</h3>
+            <p className="form-hint">
+              Справочник уровней для выбора студентом при заполнении достижений.
+            </p>
             <div className="form-row form-row--2" style={{ marginBottom: '0.5rem' }}>
               {localLevels.map((l) => (
                 <div key={l.id} className="form-group">
+                  <label>{l.id}</label>
                   <input
                     value={l.label}
                     onChange={(e) =>
                       setLocalLevels(
-                        localLevels.map((x) => (x.id === l.id ? { ...x, label: e.target.value } : x))
+                        localLevels.map((x) =>
+                          x.id === l.id ? { ...x, label: e.target.value } : x
+                        )
                       )
                     }
                   />
@@ -280,7 +288,7 @@ export default function Regulations({ readOnly = false }) {
           <div className="card editor-block">
             <h3>Уровни мероприятий</h3>
             <ul>
-              {(scoringMatrix?.levels || []).map((l) => (
+              {eventLevels.map((l) => (
                 <li key={l.id}>{l.label}</li>
               ))}
             </ul>
@@ -293,7 +301,8 @@ export default function Regulations({ readOnly = false }) {
             <ul>
               {directions.map((d) => (
                 <li key={d.id}>
-                  {d.title}: {regulations.directionLimits?.[d.id] ?? regulations.defaultMaxPerDirection ?? 7}
+                  {d.title}:{' '}
+                  {regulations.directionLimits?.[d.id] ?? regulations.defaultMaxPerDirection ?? 7}
                 </li>
               ))}
             </ul>

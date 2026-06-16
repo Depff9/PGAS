@@ -9,6 +9,7 @@ import { getActiveDeadlineHomeLabel } from '../utils/submissionDeadlines';
 export default function Home() {
   const user = useAppSelector((s) => s.auth.user);
   const regulations = useAppSelector((s) => s.data.regulations);
+  const directions = useAppSelector((s) => s.data.directions);
 
   const ctaTo =
     user?.role === ROLES.ADMIN
@@ -16,7 +17,7 @@ export default function Home() {
       : user?.role === ROLES.COMMISSION
         ? '/commission'
         : user
-          ? '/application/workspace'
+          ? '/applications'
           : '/register';
 
   const deadlineText = getActiveDeadlineHomeLabel(regulations);
@@ -34,7 +35,7 @@ export default function Home() {
             </h1>
             <p>
               Электронный сервис {UNIVERSITY.shortName} для учёта достижений, подачи заявлений
-              и отслеживания рейтинга внутри вашего факультета.
+              и отслеживания рейтинга по факультетам.
             </p>
             <div className="hero__actions">
               <Link to={ctaTo} className="btn btn--primary">
@@ -51,7 +52,7 @@ export default function Home() {
             <h3>Что важно студенту</h3>
             <div className="hero__stats">
               <div className="hero__stat">
-                <strong>5</strong>
+                <strong>{directions.length}</strong>
                 <span>направлений для заявлений</span>
               </div>
               <div className="hero__stat">
@@ -60,8 +61,8 @@ export default function Home() {
                 <span>срок подачи в этом году</span>
               </div>
               <div className="hero__stat">
-                <strong>1</strong>
-                <span>заявление на студента за семестр</span>
+                <strong>2</strong>
+                <span>периода подачи в год (зимняя и летняя сессии)</span>
               </div>
               <div className="hero__stat">
                 <strong>статусы</strong>
@@ -93,8 +94,15 @@ export default function Home() {
             направлениям (лимит задаёт комиссия в регламенте).
           </li>
           <li>
-            <strong>Следите за статусом</strong> — в «Мои заявления» и в{' '}
-            <Link to="/rating">рейтинге</Link> факультета.
+            <strong>Следите за статусом</strong> — в «Моё заявление» и в{' '}
+            {user ? (
+              <Link to="/rating">рейтинге</Link>
+            ) : (
+              <Link to="/login" state={{ from: { pathname: '/rating' } }}>
+                рейтинге
+              </Link>
+            )}{' '}
+            (доступен после входа).
           </li>
         </ol>
 

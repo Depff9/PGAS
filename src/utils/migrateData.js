@@ -59,7 +59,7 @@ function buildSubmissionsFromAchievements(achievements, existingSubmissions) {
   return submissions;
 }
 
-export function hydrateAchievements(raw, _directions, _matrix, submissionsSeed) {
+export function hydrateAchievements(raw, _directions, submissionsSeed) {
   const stored = raw.achievements ?? raw.applications;
   if (!stored?.length) {
     return {

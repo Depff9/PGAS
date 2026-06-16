@@ -1,0 +1,25 @@
+flowchart LR
+    subgraph Client["Клиент (браузер)"]
+        UI["React SPA\n(Vite)"]
+        Redux["Redux Store\nauth + data"]
+        APIc["API-клиент\nsrc/api/client.js"]
+        LS["localStorage\nJWT-токен"]
+        UI <--> Redux
+        UI --> APIc
+        APIc <--> LS
+    end
+
+    subgraph Server["Сервер (Node.js)"]
+        Express["Express 4\nREST API /api"]
+        MW["Middleware\nCORS, Helmet,\nJWT, rate limit"]
+        Routes["Маршруты\nauth, users, reference,\nsubmissions, achievements,\nnotifications, history"]
+        Prisma["Prisma ORM"]
+        Express --> MW --> Routes --> Prisma
+    end
+
+    subgraph DB["СУБД"]
+        PG[("PostgreSQL\npgas_system")]
+    end
+
+    APIc -->|"HTTPS / HTTP\nAuthorization: Bearer\nJSON"| Express
+    Prisma -->|"SQL"| PG

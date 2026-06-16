@@ -73,7 +73,7 @@ export default function AdminDirections() {
     <DashboardLayout sidebarItems={commissionSidebar} sidebarTitle="Кабинет комиссии">
       <header className="page-header">
         <h1>Направления ПГАС</h1>
-        <p>Настройка пяти направлений подачи заявлений</p>
+        <p>Настройка направлений подачи заявлений</p>
       </header>
       {requestError && <div className="alert alert--error">{requestError}</div>}
       <div className="form-actions" style={{ marginTop: 0, marginBottom: '1rem' }}>

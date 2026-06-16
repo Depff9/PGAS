@@ -1,0 +1,52 @@
+# Локальный полный стек: PostgreSQL + backend + frontend (http://localhost:8080)
+# Запуск: docker compose up --build
+# Первый запуск с демо-данными: PGAS_SEED_ON_START=true docker compose up --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pgas_system
+    volumes:
+      - pgas_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d pgas_system']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pgas_system?schema=public
+      JWT_SECRET: ${JWT_SECRET:-local-dev-jwt-secret-min-32-characters-long}
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGIN: http://localhost:8080
+      PGAS_SEED_ON_START: ${PGAS_SEED_ON_START:-false}
+    ports:
+      - '4000:4000'
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8080/api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '8080:80'
+
+volumes:
+  pgas_pgdata:

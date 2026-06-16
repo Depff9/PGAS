@@ -13,9 +13,6 @@ export default function Sidebar({ items, title }) {
           if (item.to === '/commission/directions') {
             return user.permissions?.canEditDirections;
           }
-          if (item.to === '/commission/scoring') {
-            return user.permissions?.canEditScoringMatrix;
-          }
           return true;
         })
       : items;

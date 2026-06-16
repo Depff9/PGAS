@@ -87,10 +87,6 @@ export function downloadXlsx(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
   XLSX.writeFile(wb, filename);
 }
 
-export function downloadCsv(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
-  downloadXlsx(filename.replace(/\.csv$/i, '.xlsx'), rows, columns);
-}
-
 export function downloadDoc(filename, rows, columns = DEFAULT_EXPORT_COLUMNS) {
   const header = columns.map((c) => c.label);
 

@@ -1,27 +1,24 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { authRequired, requireRoles } from '../middleware/auth.js';
-import {
-  requireCommissionPermission,
-  requireAnyCommissionPermission,
-} from '../middleware/commission.js';
+import { requireCommissionPermission } from '../middleware/commission.js';
 import { createHttpError } from '../utils/http.js';
 import { prepareRegulationPayload } from '../../../src/utils/submissionDeadlines.js';
 import { getAcademicYearVariants } from '../utils/academicYear.js';
+import { resolveCurrentSubmissionPeriod } from '../utils/submissionPeriod.js';
+import { enforceMinimumScoreRules } from '../utils/minScore.js';
 
 const router = Router();
 
 router.get('/public', async (_req, res, next) => {
   try {
-    const [directions, faculties, groups, tooltips, regulations, scoringMatrix] =
-      await Promise.all([
-        prisma.direction.findMany({ orderBy: { id: 'asc' } }),
-        prisma.faculty.findMany({ orderBy: { shortName: 'asc' } }),
-        prisma.group.findMany({ orderBy: { name: 'asc' } }),
-        prisma.tooltip.findMany({ orderBy: { id: 'asc' } }),
-        prisma.regulation.findUnique({ where: { id: 1 } }),
-        prisma.scoringMatrix.findUnique({ where: { id: 1 } }),
-      ]);
+    const [directions, faculties, groups, tooltips, regulations] = await Promise.all([
+      prisma.direction.findMany({ orderBy: { id: 'asc' } }),
+      prisma.faculty.findMany({ orderBy: { shortName: 'asc' } }),
+      prisma.group.findMany({ orderBy: { name: 'asc' } }),
+      prisma.tooltip.findMany({ orderBy: { id: 'asc' } }),
+      prisma.regulation.findUnique({ where: { id: 1 } }),
+    ]);
 
     res.json({
       directions,
@@ -29,7 +26,6 @@ router.get('/public', async (_req, res, next) => {
       groups,
       tooltips,
       regulations,
-      scoringMatrix,
     });
   } catch (error) {
     next(error);
@@ -59,7 +55,10 @@ router.get('/students', authRequired, requireRoles('admin', 'commission'), async
 
 router.get('/rating', authRequired, async (_req, res, next) => {
   try {
+    await enforceMinimumScoreRules();
+
     const currentAcademicYears = getAcademicYearVariants();
+    const currentPeriod = await resolveCurrentSubmissionPeriod();
     const [students, submissions, achievements] = await Promise.all([
       prisma.user.findMany({
         where: { role: 'student' },
@@ -75,19 +74,21 @@ router.get('/rating', authRequired, async (_req, res, next) => {
       }),
       prisma.submission.findMany({
         where: {
-          status: { not: 'draft' },
+          status: { notIn: ['draft', 'rejected'] },
           academicYear: { in: currentAcademicYears },
+          period: currentPeriod,
         },
-        select: { userId: true, id: true },
+        select: { userId: true, id: true, status: true },
       }),
       prisma.achievement.findMany({
         where: {
-          status: { in: ['submitted', 'approved', 'revision'] },
+          status: { in: ['submitted', 'approved'] },
         },
         select: {
           userId: true,
           submissionId: true,
           title: true,
+          status: true,
           score: true,
           finalScore: true,
         },
@@ -103,8 +104,9 @@ router.get('/rating', authRequired, async (_req, res, next) => {
       if (!currentSubmissionIds.has(item.submissionId)) return;
       const normalizedTitle = String(item.title || '').trim();
       if (!normalizedTitle) return;
+      const score = item.status === 'approved' ? Number(item.finalScore ?? item.score ?? 0) : 0;
+      if (score <= 0) return;
       submittedUserIds.add(item.userId);
-      const score = Number(item.finalScore ?? item.score ?? 0);
       scoreByUser.set(item.userId, (scoreByUser.get(item.userId) || 0) + score);
       countByUser.set(item.userId, (countByUser.get(item.userId) || 0) + 1);
     });
@@ -119,6 +121,7 @@ router.get('/rating', authRequired, async (_req, res, next) => {
         totalScore: scoreByUser.get(student.id) || 0,
         achievementsCount: countByUser.get(student.id) || 0,
       }))
+      .filter((row) => row.totalScore >= 25)
       .sort(
         (a, b) =>
           b.totalScore - a.totalScore ||
@@ -144,7 +147,7 @@ router.get('/directions', authRequired, async (_req, res, next) => {
 router.post(
   '/directions',
   authRequired,
-  requireRoles('commission', 'admin'),
+  requireRoles('commission'),
   requireCommissionPermission('canEditDirections'),
   async (req, res, next) => {
     try {
@@ -169,7 +172,7 @@ router.post(
 router.patch(
   '/directions/:id',
   authRequired,
-  requireRoles('commission', 'admin'),
+  requireRoles('commission'),
   requireCommissionPermission('canEditDirections'),
   async (req, res, next) => {
     try {
@@ -333,7 +336,7 @@ router.get('/regulations', authRequired, async (_req, res, next) => {
 router.patch(
   '/regulations',
   authRequired,
-  requireRoles('commission', 'admin'),
+  requireRoles('commission'),
   requireCommissionPermission('canEditRegulations'),
   async (req, res, next) => {
     try {
@@ -344,6 +347,7 @@ router.patch(
           sections: payload.sections,
           directionLimits: payload.directionLimits,
           defaultMaxPerDirection: payload.defaultMaxPerDirection,
+          eventLevels: payload.eventLevels,
         },
         payload.submissionDeadlines
       );
@@ -363,6 +367,7 @@ router.patch(
           defaultMaxPerDirection: Number(nextPayload.defaultMaxPerDirection || 7),
           directionLimits: nextPayload.directionLimits || {},
           submissionDeadlines: nextPayload.submissionDeadlines,
+          eventLevels: nextPayload.eventLevels || payload.eventLevels || [],
           sections: nextPayload.sections || [],
         },
         update: {
@@ -372,49 +377,12 @@ router.patch(
           defaultMaxPerDirection: nextPayload.defaultMaxPerDirection,
           directionLimits: nextPayload.directionLimits,
           submissionDeadlines: nextPayload.submissionDeadlines,
+          eventLevels: nextPayload.eventLevels ?? payload.eventLevels,
           sections: nextPayload.sections,
         },
       });
 
       res.json(regulation);
-    } catch (error) {
-      next(error);
-    }
-  }
-);
-
-router.get('/scoring-matrix', authRequired, async (_req, res, next) => {
-  try {
-    const matrix = await prisma.scoringMatrix.findUnique({ where: { id: 1 } });
-    res.json(matrix);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.patch(
-  '/scoring-matrix',
-  authRequired,
-  requireRoles('commission', 'admin'),
-  requireAnyCommissionPermission('canEditRegulations', 'canEditScoringMatrix'),
-  async (req, res, next) => {
-    try {
-      const payload = req.body || {};
-      const matrix = await prisma.scoringMatrix.upsert({
-        where: { id: 1 },
-        create: {
-          id: 1,
-          updatedAt: new Date(),
-          levels: payload.levels || [],
-          descriptionBonuses: payload.descriptionBonuses || [],
-        },
-        update: {
-          updatedAt: new Date(),
-          levels: payload.levels,
-          descriptionBonuses: payload.descriptionBonuses,
-        },
-      });
-      res.json(matrix);
     } catch (error) {
       next(error);
     }

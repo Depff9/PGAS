@@ -5,6 +5,10 @@ import { assertCommissionDirectionAccess } from '../middleware/commission.js';
 import { createHttpError } from '../utils/http.js';
 import { assertDeadlineOpen } from '../utils/deadline.js';
 import { assertValidAttachments } from '../utils/attachments.js';
+import {
+  assertAchievementDescription,
+  assertAchievementTitle,
+} from '../utils/achievementValidation.js';
 
 const router = Router();
 
@@ -36,7 +40,12 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
     });
     if (!submission) throw createHttpError(404, 'Заявка не найдена');
     if (submission.userId !== req.auth.id) throw createHttpError(403, 'Нет доступа к заявке');
+    if (submission.status !== 'draft' && submission.status !== 'revision') {
+      throw createHttpError(409, 'Нельзя добавлять достижения в уже поданное заявление');
+    }
 
+    const title = assertAchievementTitle(body.title);
+    const description = assertAchievementDescription(body.description);
     const attachments = assertValidAttachments(body.attachments ?? []);
 
     const achievement = await prisma.achievement.create({
@@ -46,8 +55,8 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
         userId: req.auth.id,
         directionId: String(body.directionId),
         slotIndex: Number(body.slotIndex || 0),
-        title: String(body.title || ''),
-        description: String(body.description || ''),
+        title,
+        description,
         attachments,
         achievementLevel: body.achievementLevel || null,
         status: 'draft',
@@ -70,8 +79,10 @@ router.patch('/:id', async (req, res, next) => {
     if (!existing) throw createHttpError(404, 'Достижение не найдено');
 
     const isStudentOwner = req.auth.role === 'student' && existing.userId === req.auth.id;
-    const isCommission = req.auth.role === 'commission' || req.auth.role === 'admin';
-    if (!isStudentOwner && !isCommission) throw createHttpError(403, 'Нет прав на изменение');
+    const isCommission = req.auth.role === 'commission';
+    if (!isStudentOwner && !isCommission) {
+      throw createHttpError(403, 'Нет прав на изменение');
+    }
 
     if (isCommission) {
       assertCommissionDirectionAccess(req.auth, existing.directionId);
@@ -79,6 +90,12 @@ router.patch('/:id', async (req, res, next) => {
 
     if (isStudentOwner) {
       await assertDeadlineOpen();
+      const submission = await prisma.submission.findUnique({
+        where: { id: existing.submissionId },
+      });
+      if (submission?.status !== 'draft' && submission?.status !== 'revision') {
+        throw createHttpError(409, 'Заявление уже подано. Изменения недоступны до возврата на доработку.');
+      }
       if (existing.status === 'submitted') {
         throw createHttpError(
           409,
@@ -92,35 +109,17 @@ router.patch('/:id', async (req, res, next) => {
 
     const updateData = isStudentOwner
       ? (() => {
-          const data = {
-            title: body.title ?? undefined,
-            description: body.description ?? undefined,
-            attachments:
-              body.attachments == null ? undefined : assertValidAttachments(body.attachments),
-            achievementLevel: body.achievementLevel ?? undefined,
-          };
-
-          if (body.status == null) return data;
-
-          const nextStatus = String(body.status);
-          if (!['draft', 'submitted'].includes(nextStatus)) {
-            throw createHttpError(400, 'Недопустимый статус достижения');
+          const data = {};
+          if (body.title != null) data.title = assertAchievementTitle(body.title);
+          if (body.description != null) {
+            data.description = assertAchievementDescription(body.description);
           }
-
-          if (existing.status === 'draft' && ['draft', 'submitted'].includes(nextStatus)) {
-            data.status = nextStatus;
-            return data;
+          if (body.attachments != null) {
+            data.attachments = assertValidAttachments(body.attachments);
           }
-
-          if (existing.status === 'revision') {
-            data.status = nextStatus;
-            if (nextStatus === 'submitted') {
-              data.revision = null;
-            }
-            return data;
-          }
-
-          throw createHttpError(400, 'Недопустимое изменение статуса');
+          if (body.achievementLevel != null) data.achievementLevel = body.achievementLevel;
+          data.status = 'draft';
+          return data;
         })()
       : {
           status: body.status ?? undefined,
@@ -150,6 +149,12 @@ router.delete('/:id', requireRoles('student', 'admin'), async (req, res, next) =
     }
     if (req.auth.role === 'student') {
       await assertDeadlineOpen();
+      const submission = await prisma.submission.findUnique({
+        where: { id: existing.submissionId },
+      });
+      if (submission?.status !== 'draft' && submission?.status !== 'revision') {
+        throw createHttpError(409, 'Нельзя удалять достижения из уже поданного заявления');
+      }
       if (existing.status === 'submitted') {
         throw createHttpError(
           409,

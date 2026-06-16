@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { setSubmissions, setAchievements } from '../store/dataSlice';
+import { reloadData } from '../store/dataSlice';
 import {
   SUBMISSION_STATUS_LABELS,
   getCurrentSemesterLabel,
@@ -14,9 +14,10 @@ import {
   getSubmissionAchievements,
   getSubmissionTotalScore,
   countFilledAchievements,
-  syncSubmissionFromAchievements,
 } from '../utils/submissions';
 import { SUBMISSION_STATUS } from '../constants/submissions';
+import { getCurrentSubmissionPeriod } from '../utils/submissionPeriod';
+import { getCurrentAcademicYear } from '../utils/academicYear';
 import { dataApi } from '../api/dataApi';
 import {
   getActiveDeadlineLabel,
@@ -32,13 +33,17 @@ export default function Applications() {
   const regulations = useAppSelector((s) => s.data.regulations);
   const deadlineIso = useAppSelector((s) => s.data.meta?.deadlineIso);
   const [requestError, setRequestError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  let submission = getStudentSubmission(submissions, user?.id);
+  const academicYear = getCurrentAcademicYear();
+  const period = getCurrentSubmissionPeriod(regulations);
+
+  let submission = getStudentSubmission(submissions, user?.id, academicYear, period, regulations);
   if (!submission && user) {
-    submission = getOrCreateSubmission(submissions, user.id);
+    submission = getOrCreateSubmission(submissions, user.id, academicYear, regulations);
   }
 
-  const subAch = submission
+  const subAch = submission?.id
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
   const isDeadlineReached = isSubmissionDeadlineReached(deadlineIso);
@@ -46,6 +51,10 @@ export default function Applications() {
   const semesterLabel = getCurrentSemesterLabel(regulations);
   const filled = countFilledAchievements(subAch);
   const totalScore = getSubmissionTotalScore(subAch);
+  const canSubmit =
+    (submission?.status === SUBMISSION_STATUS.DRAFT ||
+      submission?.status === SUBMISSION_STATUS.REVISION) &&
+    !isDeadlineReached;
 
   const byDirection = directions.map((d) => ({
     direction: d,
@@ -55,40 +64,27 @@ export default function Applications() {
   const submitApplication = async () => {
     setRequestError('');
     if (isDeadlineReached) {
-      alert('Окончание сроков подачи наступило. Отправка заявления недоступна.');
+      setRequestError('Окончание сроков подачи наступило. Отправка заявления недоступна.');
       return;
     }
     if (filled === 0) {
-      alert('Добавьте хотя бы одно достижение в таблице');
+      setRequestError('Добавьте хотя бы одно достижение в таблице');
       return;
     }
-    const updatedAch = subAch.map((a) =>
-      a.status === 'draft' && a.title
-        ? { ...a, status: 'submitted', updatedAt: new Date().toISOString() }
-        : a
-    );
-    const otherAch = achievements.filter((a) => a.submissionId !== submission.id);
-    const synced = syncSubmissionFromAchievements(
-      { ...submission, submittedAt: new Date().toISOString(), status: SUBMISSION_STATUS.SUBMITTED },
-      [...otherAch, ...updatedAch]
-    );
-    synced.status = SUBMISSION_STATUS.SUBMITTED;
-    synced.submittedAt = new Date().toISOString();
+    setSubmitting(true);
     try {
-      await dataApi.submitOwnSubmission(synced.id);
+      let sub = submission;
+      if (!sub?.id) {
+        sub = await dataApi.createSubmission({ academicYear, period, status: 'draft' });
+      }
+      await dataApi.submitOwnSubmission(sub.id);
+      await dispatch(reloadData());
+      alert('Заявление на ПГАС подано');
     } catch (error) {
       setRequestError(error.message || 'Не удалось подать заявление');
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    dispatch(setAchievements([...otherAch, ...updatedAch]));
-    dispatch(
-      setSubmissions(
-        submissions.some((s) => s.id === synced.id)
-          ? submissions.map((s) => (s.id === synced.id ? synced : s))
-          : [...submissions, synced]
-      )
-    );
-    alert('Заявление на ПГАС подано');
   };
 
   return (
@@ -98,8 +94,9 @@ export default function Applications() {
         <header className="page-header">
           <h1>Моё заявление на ПГАС</h1>
           <p>
-            Одно заявление на повышенную стипендию за {semesterLabel}.
-            Внутри — достижения по направлениям.
+            Одно заявление за {semesterLabel} (по итогам{' '}
+            {period === 'winter' ? 'зимней' : 'летней'} сессии). Внутри — достижения по
+            направлениям.
           </p>
         </header>
 
@@ -114,7 +111,7 @@ export default function Applications() {
           <div className="submission-card__head">
             <div>
               <h2 style={{ margin: 0 }}>Заявление на ПГАС</h2>
-              <p className="form-hint">Семестр: {semesterLabel}</p>
+              <p className="form-hint">Период: {semesterLabel}</p>
             </div>
             <span className={`badge badge--${submission?.status || 'draft'}`}>
               {SUBMISSION_STATUS_LABELS[submission?.status] || 'Черновик'}
@@ -124,7 +121,7 @@ export default function Applications() {
           <dl className="profile-meta submission-card__stats">
             <dt>Достижений заполнено</dt>
             <dd>{filled}</dd>
-            <dt>Сумма баллов</dt>
+            <dt>Сумма одобренных баллов</dt>
             <dd>{totalScore}</dd>
             {submission?.submittedAt && (
               <>
@@ -138,8 +135,7 @@ export default function Applications() {
           <ul className="submission-directions-list">
             {byDirection.map(({ direction, count }) => (
               <li key={direction.id}>
-                <strong>{direction.shortTitle || direction.title}</strong> — {count}{' '}
-                достиж.
+                <strong>{direction.shortTitle || direction.title}</strong> — {count} достиж.
               </li>
             ))}
           </ul>
@@ -182,9 +178,14 @@ export default function Applications() {
             <Link to="/application/workspace" className="btn btn--primary">
               Открыть таблицу достижений
             </Link>
-            {submission?.status === SUBMISSION_STATUS.DRAFT && !isDeadlineReached && (
-              <button type="button" className="btn btn--ghost" onClick={submitApplication}>
-                Подать заявление
+            {canSubmit && (
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={submitApplication}
+                disabled={submitting}
+              >
+                {submitting ? 'Отправка…' : 'Подать заявление'}
               </button>
             )}
             <Link to="/rating" className="btn btn--ghost">

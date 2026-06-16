@@ -1,6 +1,7 @@
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { getCurrentAcademicYear, isSameAcademicYear } from './academicYear';
+import { getCurrentSubmissionPeriod } from './submissionPeriod';
 import { getEffectiveScore } from './scoring';
 
 export function getDirectionLimit(regulations, directionId) {
@@ -12,29 +13,51 @@ export function getSubmissionAchievements(achievements, submissionId) {
   return achievements.filter((a) => a.submissionId === submissionId);
 }
 
-export function getStudentSubmission(submissions, userId, year = getCurrentAcademicYear()) {
+export function getStudentSubmission(
+  submissions,
+  userId,
+  year = getCurrentAcademicYear(),
+  period = null,
+  regulations = null
+) {
+  const activePeriod = period ?? getCurrentSubmissionPeriod(regulations);
   return submissions.find(
-    (s) => s.userId === userId && isSameAcademicYear(s.academicYear, year)
+    (s) =>
+      s.userId === userId &&
+      isSameAcademicYear(s.academicYear, year) &&
+      (s.period || 'summer') === activePeriod
   );
 }
 
-export function isHistoricalSubmission(submission, referenceDate = new Date()) {
+export function isHistoricalSubmission(submission, regulations, referenceDate = new Date()) {
   if (!submission) return false;
-  return !isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate));
+  return !isCurrentPeriodSubmission(submission, regulations, referenceDate);
 }
 
-export function isCurrentPeriodSubmission(submission, referenceDate = new Date()) {
+export function isCurrentPeriodSubmission(submission, regulations, referenceDate = new Date()) {
   if (!submission) return false;
-  return isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate));
+  const year = getCurrentAcademicYear(referenceDate);
+  const period = getCurrentSubmissionPeriod(regulations, referenceDate);
+  return (
+    isSameAcademicYear(submission.academicYear, year) &&
+    (submission.period || 'summer') === period
+  );
 }
 
-export function getOrCreateSubmission(submissions, userId, year = getCurrentAcademicYear()) {
-  const existing = getStudentSubmission(submissions, userId, year);
+export function getOrCreateSubmission(
+  submissions,
+  userId,
+  year = getCurrentAcademicYear(),
+  regulations = null
+) {
+  const period = getCurrentSubmissionPeriod(regulations);
+  const existing = getStudentSubmission(submissions, userId, year, period, regulations);
   if (existing) return existing;
   return {
-    id: 'sub-' + userId + '-' + year.replace(/\D/g, ''),
+    id: null,
     userId,
     academicYear: year,
+    period,
     status: SUBMISSION_STATUS.DRAFT,
     submittedAt: null,
     createdAt: new Date().toISOString(),
@@ -73,7 +96,7 @@ export function deriveSubmissionStatus(achievementList) {
 
 export function getSubmissionTotalScore(achievementList) {
   return achievementList
-    .filter((a) => a.title && a.status !== ACHIEVEMENT_STATUS.DRAFT)
+    .filter((a) => a.title && a.status === ACHIEVEMENT_STATUS.APPROVED)
     .reduce((sum, a) => sum + getEffectiveScore(a), 0);
 }
 
@@ -88,4 +111,9 @@ export function syncSubmissionFromAchievements(submission, achievements) {
     status: deriveSubmissionStatus(list),
     updatedAt: new Date().toISOString(),
   };
+}
+
+export function isSubmissionLocked(submission) {
+  if (!submission) return false;
+  return submission.status !== SUBMISSION_STATUS.DRAFT && submission.status !== SUBMISSION_STATUS.REVISION;
 }

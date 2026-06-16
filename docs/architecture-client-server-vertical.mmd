@@ -1,0 +1,32 @@
+%% Упрощённая вертикальная схема — лучше для Word (одна колонка)
+flowchart TB
+    subgraph Browser["Пользовательский уровень"]
+        A["Веб-браузер\n(Chrome, Firefox, Edge)"]
+    end
+
+    subgraph Frontend["Клиентская часть (Frontend)"]
+        B["Одностраничное приложение React 18"]
+        C["Маршрутизация React Router"]
+        D["Состояние Redux Toolkit"]
+        E["HTTP-клиент + JWT в localStorage"]
+        B --> C
+        B --> D
+        B --> E
+    end
+
+    subgraph Backend["Серверная часть (Backend)"]
+        F["Express — REST API\nпрефикс /api"]
+        G["Аутентификация JWT\nроли: student, commission, admin"]
+        H["Бизнес-логика\nзаявления, достижения,\nдедлайны, рейтинг"]
+        F --> G --> H
+    end
+
+    subgraph Data["Уровень данных"]
+        I["Prisma ORM"]
+        J[("PostgreSQL")]
+        I --> J
+    end
+
+    A --> B
+    E -->|"JSON, REST\nGET POST PATCH DELETE"| F
+    H --> I

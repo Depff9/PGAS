@@ -15,6 +15,7 @@ export default function Rating() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const faculties = useAppSelector((s) => s.data.faculties);
   const submissions = useAppSelector((s) => s.data.submissions);
+  const regulations = useAppSelector((s) => s.data.regulations);
   const [serverRows, setServerRows] = useState(null);
   const [ratingError, setRatingError] = useState('');
 
@@ -75,7 +76,7 @@ export default function Rating() {
               totalScore: row.totalScore,
             };
           })
-        : buildOverallRating(users, achievements, faculties, submissions);
+        : buildOverallRating(users, achievements, faculties, submissions, regulations);
     const filtered =
       facultyFilter === 'all'
         ? base
@@ -88,7 +89,7 @@ export default function Rating() {
       achievementsCount: (row) => row.achievementsCount,
       totalScore: (row) => row.totalScore,
     });
-  }, [users, achievements, faculties, submissions, sortState, facultyFilter, serverRows, user?.role, ratingError]);
+  }, [users, achievements, faculties, submissions, sortState, facultyFilter, serverRows, user?.role, ratingError, regulations]);
 
   const myRow =
     user?.role === ROLES.STUDENT && Array.isArray(serverRows)
@@ -97,7 +98,7 @@ export default function Rating() {
   const myScore =
     user?.role === ROLES.STUDENT
       ? myRow?.totalScore ??
-        (ratingError ? getStudentTotalScore(user.id, achievements, submissions) : 0)
+        (ratingError ? getStudentTotalScore(user.id, achievements, submissions, regulations) : 0)
       : 0;
   const myPlace = myRow?.place;
 
@@ -108,8 +109,8 @@ export default function Rating() {
         <header className="page-header">
           <h1>Рейтинг студентов</h1>
           <p>
-            Общий зачёт по сумме баллов за поданные достижения по всем факультетам —{' '}
-            {UNIVERSITY.shortName}
+            Рейтинг по сумме одобренных баллов (от 25) за текущий период подачи —{' '}
+            {UNIVERSITY.shortName}. Используйте фильтр, чтобы смотреть свой факультет.
           </p>
         </header>
         {ratingError && <div className="alert alert--warning">{ratingError}</div>}

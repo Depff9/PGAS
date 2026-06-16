@@ -6,7 +6,6 @@ import { initialRegulations } from '../../src/mock/regulations.js';
 import { initialFaculties } from '../../src/mock/faculties.js';
 import { initialGroups } from '../../src/mock/groups.js';
 import { initialTooltips } from '../../src/mock/tooltips.js';
-import { defaultScoringMatrix } from '../../src/mock/scoringMatrix.js';
 import { initialSubmissions } from '../../src/mock/submissions.js';
 import { initialAchievements } from '../../src/mock/achievements.js';
 
@@ -33,7 +32,6 @@ async function seed() {
   await prisma.tooltip.deleteMany();
   await prisma.historyEntry.deleteMany();
   await prisma.regulation.deleteMany();
-  await prisma.scoringMatrix.deleteMany();
 
   await prisma.faculty.createMany({ data: initialFaculties });
   await prisma.group.createMany({ data: initialGroups });
@@ -59,37 +57,36 @@ async function seed() {
   await prisma.tooltip.createMany({ data: initialTooltips });
 
   await prisma.submission.createMany({
-    data: initialSubmissions
-      .map((s) => ({
-        id: s.id,
-        userId: s.userId,
-        academicYear: s.academicYear,
-        status: s.status,
-        submittedAt: s.submittedAt ? new Date(s.submittedAt) : null,
-        createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
-        updatedAt: s.updatedAt ? new Date(s.updatedAt) : new Date(),
-      })),
+    data: initialSubmissions.map((s) => ({
+      id: s.id,
+      userId: s.userId,
+      academicYear: s.academicYear,
+      period: s.period || 'summer',
+      status: s.status,
+      submittedAt: s.submittedAt ? new Date(s.submittedAt) : null,
+      createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+      updatedAt: s.updatedAt ? new Date(s.updatedAt) : new Date(),
+    })),
   });
 
   await prisma.achievement.createMany({
-    data: initialAchievements
-      .map((a) => ({
-        id: a.id,
-        submissionId: a.submissionId,
-        userId: a.userId,
-        directionId: a.directionId,
-        slotIndex: a.slotIndex ?? 0,
-        title: a.title || '',
-        description: a.description || '',
-        attachments: a.attachments || [],
-        achievementLevel: a.achievementLevel || null,
-        status: a.status || 'draft',
-        score: a.score ?? null,
-        finalScore: a.finalScore ?? null,
-        revision: a.revision || null,
-        createdAt: a.createdAt ? new Date(a.createdAt) : new Date(),
-        updatedAt: a.updatedAt ? new Date(a.updatedAt) : new Date(),
-      })),
+    data: initialAchievements.map((a) => ({
+      id: a.id,
+      submissionId: a.submissionId,
+      userId: a.userId,
+      directionId: a.directionId,
+      slotIndex: a.slotIndex ?? 0,
+      title: a.title || '',
+      description: a.description || '',
+      attachments: a.attachments || [],
+      achievementLevel: a.achievementLevel || null,
+      status: a.status || 'draft',
+      score: a.score ?? null,
+      finalScore: a.finalScore ?? null,
+      revision: a.revision || null,
+      createdAt: a.createdAt ? new Date(a.createdAt) : new Date(),
+      updatedAt: a.updatedAt ? new Date(a.updatedAt) : new Date(),
+    })),
   });
 
   await prisma.regulation.create({
@@ -101,16 +98,8 @@ async function seed() {
       defaultMaxPerDirection: initialRegulations.defaultMaxPerDirection ?? 7,
       directionLimits: initialRegulations.directionLimits || {},
       submissionDeadlines: initialRegulations.submissionDeadlines || null,
+      eventLevels: initialRegulations.eventLevels || [],
       sections: initialRegulations.sections || [],
-    },
-  });
-
-  await prisma.scoringMatrix.create({
-    data: {
-      id: 1,
-      updatedAt: new Date(defaultScoringMatrix.updatedAt || Date.now()),
-      levels: defaultScoringMatrix.levels || [],
-      descriptionBonuses: defaultScoringMatrix.descriptionBonuses || [],
     },
   });
 }
@@ -118,11 +107,9 @@ async function seed() {
 seed()
   .then(async () => {
     await prisma.$disconnect();
-    // eslint-disable-next-line no-console
     console.log('Seed completed');
   })
   .catch(async (error) => {
-    // eslint-disable-next-line no-console
     console.error(error);
     await prisma.$disconnect();
     process.exit(1);

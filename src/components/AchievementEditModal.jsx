@@ -1,28 +1,32 @@
 import { useState } from 'react';
 import TooltipInfo from './TooltipInfo';
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
-import { readFileAsAttachment } from '../utils/files';
+import { getEventLevels } from '../constants/eventLevels';
+import { readFileAsAttachment, MAX_ATTACHMENTS } from '../utils/files';
 
 export default function AchievementEditModal({
   achievement,
   direction,
+  regulations,
   onClose,
   onSave,
   onDelete,
 }) {
   const isRevision = achievement?.status === ACHIEVEMENT_STATUS.REVISION;
+  const eventLevels = getEventLevels(regulations);
   const [title, setTitle] = useState(achievement?.title || '');
   const [description, setDescription] = useState(achievement?.description || '');
   const [achievementLevel, setAchievementLevel] = useState(
-    achievement?.achievementLevel || 'faculty'
+    achievement?.achievementLevel || eventLevels[0]?.id || 'faculty'
   );
   const [attachments, setAttachments] = useState(achievement?.attachments || []);
   const [error, setError] = useState('');
   const [fileError, setFileError] = useState('');
+  const [saving, setSaving] = useState(false);
   const hasUnsavedChanges =
     title !== (achievement?.title || '') ||
     description !== (achievement?.description || '') ||
-    achievementLevel !== (achievement?.achievementLevel || 'faculty') ||
+    achievementLevel !== (achievement?.achievementLevel || eventLevels[0]?.id || 'faculty') ||
     JSON.stringify(attachments) !== JSON.stringify(achievement?.attachments || []);
 
   const handleClose = () => {
@@ -37,7 +41,7 @@ export default function AchievementEditModal({
     if (!file) return;
     setFileError('');
     try {
-      const att = await readFileAsAttachment(file);
+      const att = await readFileAsAttachment(file, attachments.length);
       setAttachments([...attachments, att]);
     } catch (err) {
       setFileError(err.message);
@@ -45,33 +49,35 @@ export default function AchievementEditModal({
     e.target.value = '';
   };
 
-  const submit = (asDraft) => {
+  const saveAchievement = async () => {
     setError('');
     if (!title.trim()) {
       setError('Укажите название');
       return;
     }
-    if (!asDraft && description.trim().length < 100) {
+    if (description.trim().length < 100) {
       setError('Описание — не менее 100 символов');
       return;
     }
-    const now = new Date().toISOString();
-    onSave({
-      ...achievement,
-      title: title.trim(),
-      description: description.trim(),
-      achievementLevel,
-      attachments,
-      score: 0,
-      status: asDraft
-        ? ACHIEVEMENT_STATUS.DRAFT
-        : isRevision
-          ? ACHIEVEMENT_STATUS.SUBMITTED
-          : ACHIEVEMENT_STATUS.SUBMITTED,
-      revision: isRevision && !asDraft ? null : achievement?.revision,
-      updatedAt: now,
-    });
-    onClose();
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      await onSave({
+        ...achievement,
+        title: title.trim(),
+        description: description.trim(),
+        achievementLevel,
+        attachments,
+        score: null,
+        status: ACHIEVEMENT_STATUS.DRAFT,
+        revision: isRevision ? achievement?.revision : null,
+        updatedAt: now,
+      });
+    } catch (err) {
+      setError(err.message || 'Не удалось сохранить достижение');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -92,9 +98,7 @@ export default function AchievementEditModal({
             <strong>Замечания комиссии:</strong>
             <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.2rem' }}>
               {(achievement.revision.items || []).map((item, i) => (
-                <li key={i}>
-                  {item.message}
-                </li>
+                <li key={i}>{item.message}</li>
               ))}
               {achievement.revision.generalComment && (
                 <li>{achievement.revision.generalComment}</li>
@@ -110,10 +114,11 @@ export default function AchievementEditModal({
             Уровень <TooltipInfo fieldKey="application.level" />
           </label>
           <select value={achievementLevel} onChange={(e) => setAchievementLevel(e.target.value)}>
-            <option value="faculty">Внутривузовский</option>
-            <option value="regional">Региональный</option>
-            <option value="federal">Всероссийский</option>
-            <option value="international">Международный</option>
+            {eventLevels.map((level) => (
+              <option key={level.id} value={level.id}>
+                {level.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="form-group">
@@ -131,9 +136,15 @@ export default function AchievementEditModal({
         </div>
         <div className="form-group">
           <label>
-            Файлы (PDF, JPG, PNG) <TooltipInfo fieldKey="application.attachments" />
+            Файлы (PDF, JPG, PNG, до {MAX_ATTACHMENTS} шт.){' '}
+            <TooltipInfo fieldKey="application.attachments" />
           </label>
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleFile} />
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp"
+            onChange={handleFile}
+            disabled={attachments.length >= MAX_ATTACHMENTS}
+          />
           {fileError && <p className="form-hint" style={{ color: '#b91c1c' }}>{fileError}</p>}
           {attachments.length > 0 && (
             <ul className="file-list">
@@ -155,38 +166,24 @@ export default function AchievementEditModal({
           )}
         </div>
         <p className="form-hint" style={{ marginBottom: '0.75rem' }}>
-          Баллы назначаются комиссией после проверки достижения.
+          Достижение сохраняется в черновик. Подать заявление целиком можно в разделе «Моё заявление».
+          Баллы назначает комиссия после проверки.
         </p>
         <div className="form-actions">
           <button
             type="button"
             className="btn btn--primary"
-            onClick={() => submit(false)}
-            title="Отправить на проверку"
+            onClick={saveAchievement}
+            disabled={saving}
           >
-            <TooltipInfo fieldKey="application.submit" />
-            {isRevision ? 'Отправить после правок' : 'Отправить на проверку'}
-          </button>
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={() => submit(true)}
-            title="Сохранить черновик"
-          >
-            <TooltipInfo fieldKey="application.draft" />
-            Черновик
+            {achievement?.id ? 'Сохранить изменения' : 'Добавить достижение'}
           </button>
           {achievement?.id && onDelete && (
             <button type="button" className="btn btn--danger" onClick={onDelete}>
               Удалить
             </button>
           )}
-          <button
-            type="button"
-            className="btn btn--ghost"
-            onClick={handleClose}
-            title="Закрыть форму"
-          >
+          <button type="button" className="btn btn--ghost" onClick={handleClose}>
             <TooltipInfo fieldKey="application.cancel" />
             Отмена
           </button>

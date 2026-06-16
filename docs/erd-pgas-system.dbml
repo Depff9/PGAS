@@ -1,0 +1,98 @@
+// Импорт на https://dbdiagram.io/d — File → Import → вставить этот текст
+// Затем: Export → PNG (для вставки в Word как Рисунок 3.2)
+
+Table User {
+  id varchar [pk]
+  email varchar [unique]
+  passwordHash varchar
+  role varchar
+  lastName varchar
+  firstName varchar
+  middleName varchar
+  facultyId varchar [ref: > Faculty.id]
+  group varchar
+  permissions json
+}
+
+Table Faculty {
+  id varchar [pk]
+  shortName varchar
+  name varchar
+}
+
+Table Group {
+  id varchar [pk]
+  name varchar
+  facultyId varchar [ref: > Faculty.id]
+}
+
+Table Submission {
+  id varchar [pk]
+  userId varchar [ref: > User.id]
+  academicYear varchar
+  status varchar
+  submittedAt datetime
+}
+
+Table Achievement {
+  id varchar [pk]
+  submissionId varchar [ref: > Submission.id]
+  userId varchar [ref: > User.id]
+  directionId varchar [ref: > Direction.id]
+  slotIndex int
+  title varchar
+  description varchar
+  attachments json
+  status varchar
+  score int
+  finalScore int
+}
+
+Table Direction {
+  id varchar [pk]
+  title varchar
+  shortTitle varchar
+  description varchar
+  active boolean
+}
+
+Table Regulation {
+  id int [pk]
+  title varchar
+  defaultMaxPerDirection int
+  directionLimits json
+  submissionDeadlines json
+  sections json
+  updatedBy varchar [ref: > User.id]
+}
+
+Table ScoringMatrix {
+  id int [pk]
+  levels json
+  descriptionBonuses json
+}
+
+Table Notification {
+  id varchar [pk]
+  userId varchar [ref: > User.id]
+  achievementId varchar [ref: > Achievement.id]
+  type varchar
+  title varchar
+  body varchar
+  read boolean
+}
+
+Table HistoryEntry {
+  id varchar [pk]
+  action varchar
+  entity varchar
+  payload json
+  createdBy varchar [ref: > User.id]
+}
+
+Table Tooltip {
+  id varchar [pk]
+  fieldKey varchar
+  label varchar
+  text varchar
+}

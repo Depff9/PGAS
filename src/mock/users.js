@@ -131,7 +131,6 @@ export const initialUsers = [
     permissions: {
       canEditRegulations: true,
       canEditDirections: true,
-      canEditScoringMatrix: true,
       allowedDirectionIds: ['d1', 'd2', 'd3', 'd4', 'd5'],
     },
     recordBookNumber: null,

@@ -36,7 +36,6 @@ export async function fetchBootstrapData() {
     groups,
     tooltips,
     regulations,
-    scoringMatrix,
     submissions,
     achievements,
     notifications,
@@ -49,7 +48,6 @@ export async function fetchBootstrapData() {
     apiRequest('/reference/groups'),
     apiRequest('/reference/tooltips'),
     apiRequest('/reference/regulations'),
-    apiRequest('/reference/scoring-matrix'),
     apiRequest('/submissions'),
     apiRequest('/achievements'),
     apiRequest('/notifications'),
@@ -81,7 +79,6 @@ export async function fetchBootstrapData() {
     groups,
     tooltips,
     regulations,
-    scoringMatrix,
     submissions,
     achievements,
     notifications,
@@ -119,11 +116,6 @@ export const dataApi = {
 
   updateRegulations: (payload) =>
     apiRequest('/reference/regulations', {
-      method: 'PATCH',
-      body: JSON.stringify(payload),
-    }),
-  updateScoringMatrix: (payload) =>
-    apiRequest('/reference/scoring-matrix', {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),

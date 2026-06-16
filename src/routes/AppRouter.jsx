@@ -17,7 +17,6 @@ import Faculties from '../pages/Faculties';
 import Groups from '../pages/Groups';
 import AdminDirections from '../pages/AdminDirections';
 import Tooltips from '../pages/Tooltips';
-import ScoringMatrix from '../pages/ScoringMatrix';
 import ChangeHistory from '../pages/ChangeHistory';
 
 import ComissionDashboard from '../pages/ComissionDashboard';

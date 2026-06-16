@@ -20,6 +20,7 @@ export default function CommissionApplications() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const users = useAppSelector((s) => s.data.users);
   const faculties = useAppSelector((s) => s.data.faculties);
+  const regulations = useAppSelector((s) => s.data.regulations);
   const user = useAppSelector((s) => s.auth.user);
   const allowedDirections = user?.permissions?.allowedDirectionIds || [];
   const [sortState, setSortState] = useState({ key: 'studentName', dir: 'asc' });
@@ -49,12 +50,12 @@ export default function CommissionApplications() {
         .filter(Boolean)
         .filter(
           (row) =>
-            isCurrentPeriodSubmission(row.sub) &&
+            isCurrentPeriodSubmission(row.sub, regulations) &&
             row.hasSubmitted &&
             row.filled > 0 &&
             row.hasVisibleDirection
         ),
-    [submissions, users, achievements, faculties, allowedDirections]
+    [submissions, users, achievements, faculties, allowedDirections, regulations]
   );
 
   const sortedList = useMemo(

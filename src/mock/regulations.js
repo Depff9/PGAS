@@ -1,3 +1,4 @@
+import { DEFAULT_EVENT_LEVELS } from '../constants/eventLevels.js';
 import {
   buildDeadlineSectionContent,
   getDefaultSubmissionDeadlines,
@@ -18,6 +19,7 @@ export const initialRegulations = {
     d5: 7,
   },
   submissionDeadlines: defaultDeadlines,
+  eventLevels: DEFAULT_EVENT_LEVELS,
   sections: [
     {
       id: 'r1',
@@ -46,7 +48,7 @@ export const initialRegulations = {
       id: 'r4',
       heading: 'Критерии и порядок отбора',
       content:
-        'Отбор претендентов проводится конкурсом по критериям раздела 2 и шкале оценки достижений. При превышении квоты приоритет получают студенты с наибольшим количеством баллов. Решение принимает стипендиальная комиссия по назначению ПГАС.',
+        'Отбор претендентов проводится конкурсом по критериям раздела 2. При превышении квоты приоритет получают студенты с наибольшим количеством баллов. Решение принимает стипендиальная комиссия по назначению ПГАС.',
     },
     {
       id: 'r4_1',

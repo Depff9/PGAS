@@ -12,9 +12,11 @@ import {
   getStudentSubmission,
   getSubmissionAchievements,
   getDirectionLimit,
-  syncSubmissionFromAchievements,
+  isSubmissionLocked,
 } from '../utils/submissions';
 import { getCurrentAcademicYear, getCurrentSemesterLabel } from '../constants/submissions';
+import { getCurrentSubmissionPeriod } from '../utils/submissionPeriod';
+import { isSameAcademicYear } from '../utils/academicYear';
 import { dataApi } from '../api/dataApi';
 import {
   getActiveDeadlineLabel,
@@ -38,20 +40,23 @@ export default function ApplicationWorkspace() {
   const [modal, setModal] = useState(null);
   const [requestError, setRequestError] = useState('');
 
-  const submission = useMemo(() => {
-    let sub = getStudentSubmission(submissions, user?.id);
-    if (!sub && user) sub = getOrCreateSubmission(submissions, user.id);
-    return sub;
-  }, [submissions, user]);
+  const academicYear = getCurrentAcademicYear();
+  const period = getCurrentSubmissionPeriod(regulations);
+  const semesterLabel = getCurrentSemesterLabel(regulations);
 
-  const myAchievements = submission
+  const submission = useMemo(() => {
+    let sub = getStudentSubmission(submissions, user?.id, academicYear, period, regulations);
+    if (!sub && user) sub = getOrCreateSubmission(submissions, user.id, academicYear, regulations);
+    return sub;
+  }, [submissions, user, academicYear, period, regulations]);
+
+  const myAchievements = submission?.id
     ? getSubmissionAchievements(achievements, submission.id)
     : [];
   const isDeadlineReached = isSubmissionDeadlineReached(deadlineIso);
-  const canEdit = !isDeadlineReached;
+  const submissionLocked = isSubmissionLocked(submission);
+  const canEdit = !isDeadlineReached && !submissionLocked;
   const deadlineLabel = getActiveDeadlineLabel(regulations);
-  const academicYear = getCurrentAcademicYear();
-  const semesterLabel = getCurrentSemesterLabel(regulations);
 
   if (!user?.facultyId || !user?.group) {
     return (
@@ -67,122 +72,114 @@ export default function ApplicationWorkspace() {
   }
 
   const ensureSubmission = async () => {
-    if (submissions.find((s) => s.id === submission.id)) return submission;
+    const existing = getStudentSubmission(submissions, user.id, academicYear, period, regulations);
+    if (existing?.id && submissions.some((s) => s.id === existing.id)) {
+      return existing;
+    }
     const created = await dataApi.createSubmission({
       academicYear,
+      period,
       status: 'draft',
     });
-    dispatch(setSubmissions([...submissions, created]));
+    const withoutDuplicate = submissions.filter(
+      (s) =>
+        !(
+          s.userId === user.id &&
+          (s.period || 'summer') === period &&
+          isSameAcademicYear(s.academicYear, academicYear)
+        )
+    );
+    dispatch(setSubmissions([...withoutDuplicate, created]));
     return created;
   };
 
   const openCell = async (directionId, slotIndex) => {
     if (!canEdit) {
-      alert('Окончание сроков подачи наступило. Изменение достижений недоступно.');
+      alert(
+        submissionLocked
+          ? 'Заявление уже подано. Редактирование доступно только после возврата на доработку.'
+          : 'Окончание сроков подачи наступило. Изменение достижений недоступно.'
+      );
       return;
     }
-    const sub = await ensureSubmission();
-    const existing = getAchievementAt(myAchievements, sub.id, directionId, slotIndex);
-    const direction = directions.find((d) => d.id === directionId);
-    setModal({
-      achievement: existing || {
-        id: null,
-        submissionId: sub.id,
-        userId: user.id,
+    try {
+      const sub = await ensureSubmission();
+      const existing = getAchievementAt(
+        getSubmissionAchievements(achievements, sub.id),
+        sub.id,
         directionId,
-        slotIndex,
-        title: '',
-        description: '',
-        attachments: [],
-        achievementLevel: 'faculty',
-        status: ACHIEVEMENT_STATUS.DRAFT,
-        score: 0,
-        finalScore: null,
-        revision: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      direction,
-    });
-  };
-
-  const persist = (nextAchievements, sub) => {
-    const other = achievements.filter((a) => a.submissionId !== sub.id);
-    const merged = [...other, ...nextAchievements];
-    dispatch(setAchievements(merged));
-    const synced = syncSubmissionFromAchievements(sub, merged);
-    const prevSubmissions = submissions;
-    dispatch(
-      setSubmissions(
-        prevSubmissions.some((s) => s.id === synced.id)
-          ? prevSubmissions.map((s) => (s.id === synced.id ? synced : s))
-          : [...prevSubmissions, synced]
-      )
-    );
+        slotIndex
+      );
+      const direction = directions.find((d) => d.id === directionId);
+      setModal({
+        achievement: existing || {
+          id: null,
+          submissionId: sub.id,
+          userId: user.id,
+          directionId,
+          slotIndex,
+          title: '',
+          description: '',
+          attachments: [],
+          achievementLevel: 'faculty',
+          status: ACHIEVEMENT_STATUS.DRAFT,
+          score: null,
+          finalScore: null,
+          revision: null,
+        },
+        direction,
+      });
+    } catch (error) {
+      setRequestError(error.message || 'Не удалось открыть форму достижения');
+    }
   };
 
   const handleSave = async (item) => {
     if (!canEdit) return;
     setRequestError('');
-    let sub = submission;
-    try {
-      sub = await ensureSubmission();
-    } catch (error) {
-      setRequestError(error.message || 'Не удалось создать заявление');
-      return;
-    }
-    const existing = myAchievements.find((a) => a.id === item.id);
-    const isNew = !existing;
-    const existingSubmittedLocked = existing?.status === 'submitted';
-    if (existingSubmittedLocked && item.status !== 'revision') {
-      alert('Поданное достижение нельзя изменить до возврата на правки.');
-      setModal(null);
-      return;
-    }
-    const withScore = {
-      ...item,
+    const sub = await ensureSubmission();
+    const currentList = getSubmissionAchievements(achievements, sub.id);
+    const existing = currentList.find((a) => a.id === item.id);
+
+    const payload = {
       submissionId: sub.id,
-      userId: user.id,
-      id: item.id || 'ach' + Date.now(),
-      score: 0,
-      status:
-        existingSubmittedLocked && existing?.status === 'submitted'
-          ? 'submitted'
-          : item.status,
+      directionId: item.directionId,
+      slotIndex: item.slotIndex,
+      title: item.title,
+      description: item.description,
+      achievementLevel: item.achievementLevel,
+      attachments: item.attachments,
+      status: ACHIEVEMENT_STATUS.DRAFT,
     };
-    const next = upsertAchievement(myAchievements, withScore);
-    persist(next, sub);
-    if (!isNew && existingSubmittedLocked) {
-      await dataApi.updateAchievement(item.id, withScore).catch(() => null);
-    } else if (item.id) {
-      await dataApi.updateAchievement(item.id, withScore);
+
+    let saved;
+    if (existing?.id) {
+      saved = await dataApi.updateAchievement(existing.id, payload);
     } else {
-      await dataApi.createAchievement(withScore);
+      saved = await dataApi.createAchievement(payload);
     }
+
+    const other = achievements.filter((a) => a.submissionId !== sub.id);
+    const next = upsertAchievement(currentList, saved);
+    dispatch(setAchievements([...other, ...next]));
     setModal(null);
   };
 
   const handleDelete = async () => {
-    if (!canEdit) return;
-    if (!modal?.achievement?.id) return;
-    if (modal.achievement.status === 'submitted') {
-      alert('Поданное достижение нельзя удалить до возврата на правки.');
-      setModal(null);
-      return;
-    }
+    if (!canEdit || !modal?.achievement?.id) return;
     if (!confirm('Удалить достижение?')) return;
     setRequestError('');
-    let sub = submission;
     try {
-      sub = await ensureSubmission();
+      const sub = await ensureSubmission();
+      await dataApi.deleteAchievement(modal.achievement.id);
+      const currentList = getSubmissionAchievements(achievements, sub.id);
+      const next = removeAchievement(currentList, modal.achievement.id);
+      const other = achievements.filter((a) => a.submissionId !== sub.id);
+      dispatch(setAchievements([...other, ...next]));
+      setModal(null);
     } catch (error) {
-      setRequestError(error.message || 'Не удалось подготовить удаление');
-      return;
+      setRequestError(error.message || 'Не удалось удалить достижение');
     }
-    const next = removeAchievement(myAchievements, modal.achievement.id);
-    persist(next, sub);
-    await dataApi.deleteAchievement(modal.achievement.id);
-    setModal(null);
   };
 
   return (
@@ -196,6 +193,13 @@ export default function ApplicationWorkspace() {
             <Link to="/regulations">регламенте</Link>.
           </p>
         </header>
+
+        {submissionLocked && (
+          <div className="alert alert--info">
+            Заявление подано. Добавляйте и редактируйте достижения только если комиссия вернула
+            заявление на доработку.
+          </div>
+        )}
 
         {isDeadlineReached && (
           <div className="alert alert--info">
@@ -232,13 +236,8 @@ export default function ApplicationWorkspace() {
                   <tbody>
                     <tr>
                       {slots.map((slot) => {
-                        const ach = submission
-                          ? getAchievementAt(
-                              myAchievements,
-                              submission.id,
-                              d.id,
-                              slot
-                            )
+                        const ach = submission?.id
+                          ? getAchievementAt(myAchievements, submission.id, d.id, slot)
                           : null;
                         return (
                           <td key={slot}>
@@ -246,7 +245,7 @@ export default function ApplicationWorkspace() {
                               type="button"
                               className={cellClass(ach?.status)}
                               onClick={() => openCell(d.id, slot)}
-                              disabled={!canEdit}
+                              disabled={!canEdit && !ach}
                             >
                               {ach ? (
                                 <>
@@ -275,6 +274,7 @@ export default function ApplicationWorkspace() {
         <AchievementEditModal
           achievement={modal.achievement}
           direction={modal.direction}
+          regulations={regulations}
           onClose={() => setModal(null)}
           onSave={handleSave}
           onDelete={canEdit && modal.achievement.id ? handleDelete : null}

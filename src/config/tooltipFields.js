@@ -22,7 +22,7 @@ export const TOOLTIP_FIELD_KEYS = [
   { value: 'application.title', label: 'Заявление — название' },
   { value: 'application.description', label: 'Заявление — описание' },
   { value: 'application.attachments', label: 'Заявление — вложения' },
-  { value: 'application.submit', label: 'Заявление — кнопка отправить' },
+  { value: 'application.submit', label: 'Заявление — кнопка добавить достижение' },
   { value: 'application.draft', label: 'Заявление — кнопка черновик' },
   { value: 'application.cancel', label: 'Заявление — кнопка отмена' },
 ];

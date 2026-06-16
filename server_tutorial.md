@@ -1,6 +1,8 @@
 # Server quick tutorial
 
-## First deploy
+> Docker-деплой (рекомендуется для продакшена): [`docs/DOCKER.md`](docs/DOCKER.md) и `./scripts/deploy-docker.sh`
+
+## First deploy (classic: pm2 + host PostgreSQL)
 
 1. Connect to server:
    - `ssh root@<SERVER_IP>`

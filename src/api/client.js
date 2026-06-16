@@ -42,7 +42,17 @@ export async function apiRequest(path, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.error || 'Ошибка запроса');
+    const message =
+      data?.error ||
+      data?.message ||
+      (response.status === 403
+        ? 'Недостаточно прав для этого действия'
+        : response.status === 404
+          ? 'Запрашиваемые данные не найдены'
+          : response.status >= 500
+            ? 'Ошибка сервера. Попробуйте позже'
+            : 'Не удалось выполнить запрос');
+    throw new Error(message);
   }
   return data;
 }

@@ -17,7 +17,6 @@ function buildCommissionPermissions(permissions) {
   return {
     canEditRegulations: permissions?.canEditRegulations ?? false,
     canEditDirections: permissions?.canEditDirections ?? false,
-    canEditScoringMatrix: permissions?.canEditScoringMatrix ?? false,
     allowedDirectionIds: permissions?.allowedDirectionIds || [],
   };
 }
@@ -104,7 +103,6 @@ export default function Users() {
       commissionPermissions: {
         canEditRegulations: u.permissions?.canEditRegulations ?? false,
         canEditDirections: u.permissions?.canEditDirections ?? false,
-        canEditScoringMatrix: u.permissions?.canEditScoringMatrix ?? false,
         allowedDirectionIds: u.permissions?.allowedDirectionIds || [],
       },
     });
@@ -228,7 +226,6 @@ export default function Users() {
             ? {
                 canEditRegulations: false,
                 canEditDirections: false,
-                canEditScoringMatrix: false,
                 allowedDirectionIds: [],
               }
             : null,
@@ -723,22 +720,6 @@ export default function Users() {
                                 }
                               />
                               Право изменять направления
-                            </label>
-                            <label style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={editForm.commissionPermissions.canEditScoringMatrix}
-                                onChange={(e) =>
-                                  setEditForm({
-                                    ...editForm,
-                                    commissionPermissions: {
-                                      ...editForm.commissionPermissions,
-                                      canEditScoringMatrix: e.target.checked,
-                                    },
-                                  })
-                                }
-                              />
-                              Право изменять уровни достижений
                             </label>
                             <div className="form-group">
                               <label>Направления для оценки</label>

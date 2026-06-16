@@ -16,7 +16,7 @@ export default function ProtectedRoute({ children, roles, commissionPermission }
         ? '/admin'
         : user.role === ROLES.COMMISSION
           ? '/commission'
-          : '/profile';
+          : '/applications';
     return <Navigate to={fallback} replace />;
   }
 

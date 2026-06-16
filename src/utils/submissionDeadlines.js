@@ -154,8 +154,11 @@ export function formatDeadlineLabel(iso, { withTime = true, dayMonthOnly = false
   });
 }
 
-export function getActiveDeadlineIso(regulations) {
+export function getActiveDeadlineIso(regulations, period = null) {
   const deadlines = normalizeSubmissionDeadlines(regulations);
+  if (period === SUBMISSION_PERIODS.WINTER || period === SUBMISSION_PERIODS.SUMMER) {
+    return deadlines[period]?.endsAt || null;
+  }
   const active = deadlines[deadlines.activePeriod];
   return active?.endsAt || null;
 }

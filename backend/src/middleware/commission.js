@@ -2,7 +2,6 @@ import { createHttpError } from '../utils/http.js';
 
 export function requireCommissionPermission(permissionKey) {
   return (req, _res, next) => {
-    if (req.auth?.role === 'admin') return next();
     if (req.auth?.role !== 'commission') {
       return next(createHttpError(403, 'Недостаточно прав'));
     }
@@ -14,7 +13,6 @@ export function requireCommissionPermission(permissionKey) {
 }
 
 export function assertCommissionDirectionAccess(auth, directionId) {
-  if (auth.role === 'admin') return;
   if (auth.role !== 'commission') {
     throw createHttpError(403, 'Недостаточно прав');
   }
@@ -27,7 +25,6 @@ export function assertCommissionDirectionAccess(auth, directionId) {
 
 export function requireAnyCommissionPermission(...permissionKeys) {
   return (req, _res, next) => {
-    if (req.auth?.role === 'admin') return next();
     if (req.auth?.role !== 'commission') {
       return next(createHttpError(403, 'Недостаточно прав'));
     }
