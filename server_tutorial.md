@@ -11,8 +11,9 @@
 3. Install/update dependencies:
    - `npm install`
    - `cd backend && npm install`
-4. Apply DB migrations:
+4. Apply DB migrations and regenerate Prisma Client:
    - `npm run prisma:deploy`
+   - (если seed падает с `Unknown argument 'period'`: `npx prisma generate`)
 5. (Optional for demo reset) reseed DB:
    - `npm run prisma:seed`
 6. Build frontend:
