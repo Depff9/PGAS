@@ -23,6 +23,8 @@ export default function Register() {
   });
   const [hasNoMiddleName, setHasNoMiddleName] = useState(false);
   const [middleNameDraft, setMiddleNameDraft] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const set = (field) => (e) =>
     setForm({
@@ -132,11 +134,39 @@ export default function Register() {
                 <label>
                   Пароль <TooltipInfo fieldKey="register.password" />
                 </label>
-                <input type="password" value={form.password} onChange={set('password')} required />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={set('password')}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </button>
               </div>
               <div className="form-group">
                 <label>Повтор пароля</label>
-                <input type="password" value={form.confirm} onChange={set('confirm')} required />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirm}
+                  onChange={set('confirm')}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  aria-pressed={showConfirmPassword}
+                >
+                  {showConfirmPassword ? '🙈' : '👁'}
+                </button>
               </div>
             </div>
             <div className="form-actions">

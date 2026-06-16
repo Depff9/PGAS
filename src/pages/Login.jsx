@@ -12,6 +12,7 @@ import { reloadData } from '../store/dataSlice';
 export default function Login() {
   const [email, setEmail] = useState('ivanov@student.brgu.ru');
   const [password, setPassword] = useState(DEMO_PASSWORD);
+  const [showPassword, setShowPassword] = useState(false);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,12 +68,21 @@ export default function Login() {
               </label>
               <input
                 id="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
               />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? '🙈' : '👁'}
+              </button>
             </div>
             <div className="form-actions">
               <button type="submit" className="btn btn--primary">

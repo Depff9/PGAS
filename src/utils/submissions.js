@@ -86,21 +86,14 @@ export function deriveSubmissionStatus(achievementList) {
   if (list.some((a) => a.status === ACHIEVEMENT_STATUS.REVISION)) {
     return SUBMISSION_STATUS.REVISION;
   }
+  if (list.some((a) => a.status === ACHIEVEMENT_STATUS.SUBMITTED)) {
+    return SUBMISSION_STATUS.SUBMITTED;
+  }
   if (list.every((a) => a.status === ACHIEVEMENT_STATUS.APPROVED)) {
     return SUBMISSION_STATUS.APPROVED;
   }
-  if (
-    list.length > 0 &&
-    list.every(
-      (a) =>
-        a.status === ACHIEVEMENT_STATUS.REJECTED || a.status === ACHIEVEMENT_STATUS.DRAFT
-    ) &&
-    list.some((a) => a.status === ACHIEVEMENT_STATUS.REJECTED)
-  ) {
+  if (list.every((a) => a.status === ACHIEVEMENT_STATUS.REJECTED)) {
     return SUBMISSION_STATUS.REJECTED;
-  }
-  if (list.some((a) => a.status === ACHIEVEMENT_STATUS.SUBMITTED)) {
-    return SUBMISSION_STATUS.SUBMITTED;
   }
   return SUBMISSION_STATUS.SUBMITTED;
 }

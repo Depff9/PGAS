@@ -15,6 +15,34 @@ import { sanitizeDownloadFilename } from '../utils/downloadFilename.js';
 
 const router = Router();
 
+function deriveSubmissionStatus(achievements) {
+  const filled = achievements.filter((item) => String(item.title || '').trim());
+  if (filled.length === 0) return 'draft';
+  if (filled.every((item) => item.status === 'draft')) return 'draft';
+  if (filled.some((item) => item.status === 'revision')) return 'revision';
+  if (filled.some((item) => item.status === 'submitted')) return 'submitted';
+  if (filled.every((item) => item.status === 'approved')) return 'approved';
+  if (filled.every((item) => item.status === 'rejected')) return 'rejected';
+  return 'submitted';
+}
+
+async function syncSubmissionStatusById(submissionId) {
+  if (!submissionId) return null;
+  const submission = await prisma.submission.findUnique({ where: { id: submissionId } });
+  if (!submission) return null;
+  const achievements = await prisma.achievement.findMany({ where: { submissionId } });
+  const nextStatus = deriveSubmissionStatus(achievements);
+  if (submission.status === nextStatus) return submission;
+  return prisma.submission.update({
+    where: { id: submissionId },
+    data: {
+      status: nextStatus,
+      updatedAt: new Date(),
+      submittedAt: nextStatus === 'submitted' ? submission.submittedAt ?? new Date() : null,
+    },
+  });
+}
+
 function listAttachments(raw) {
   return Array.isArray(raw) ? raw : [];
 }
@@ -176,6 +204,10 @@ router.patch('/:id', async (req, res, next) => {
       data: updateData,
     });
 
+    if (isStudentOwner || isCommission) {
+      await syncSubmissionStatusById(existing.submissionId);
+    }
+
     if (isStudentOwner && updateData.attachments) {
       await auditNewAttachments({
         attachments: updateData.attachments,
@@ -275,6 +307,7 @@ router.delete('/:id', requireRoles('student', 'admin'), async (req, res, next) =
     }
 
     await prisma.achievement.delete({ where: { id } });
+    await syncSubmissionStatusById(existing.submissionId);
     res.status(204).send();
   } catch (error) {
     next(error);

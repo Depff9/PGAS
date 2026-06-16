@@ -13,6 +13,7 @@ import {
   getSubmissionAchievements,
   getDirectionLimit,
   isSubmissionLocked,
+  syncSubmissionFromAchievements,
 } from '../utils/submissions';
 import { getCurrentAcademicYear, getCurrentSemesterLabel } from '../constants/submissions';
 import { getCurrentSubmissionPeriod } from '../utils/submissionPeriod';
@@ -163,6 +164,12 @@ export default function ApplicationWorkspace() {
     const other = achievements.filter((a) => a.submissionId !== sub.id);
     const next = upsertAchievement(currentList, saved);
     dispatch(setAchievements([...other, ...next]));
+    const syncedSubmission = syncSubmissionFromAchievements(sub, [...other, ...next]);
+    dispatch(
+      setSubmissions(
+        submissions.map((item) => (item.id === syncedSubmission.id ? syncedSubmission : item))
+      )
+    );
     setModal(null);
   };
 
@@ -177,6 +184,12 @@ export default function ApplicationWorkspace() {
       const next = removeAchievement(currentList, modal.achievement.id);
       const other = achievements.filter((a) => a.submissionId !== sub.id);
       dispatch(setAchievements([...other, ...next]));
+      const syncedSubmission = syncSubmissionFromAchievements(sub, [...other, ...next]);
+      dispatch(
+        setSubmissions(
+          submissions.map((item) => (item.id === syncedSubmission.id ? syncedSubmission : item))
+        )
+      );
       setModal(null);
     } catch (error) {
       setRequestError(error.message || 'Не удалось удалить достижение');
