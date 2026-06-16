@@ -24,6 +24,7 @@ import {
   getActiveDeadlineLabel,
   isDeadlineReached as isSubmissionDeadlineReached,
 } from '../utils/submissionDeadlines';
+import { formatUserError } from '../utils/userError';
 
 export default function Applications() {
   const dispatch = useAppDispatch();
@@ -83,7 +84,12 @@ export default function Applications() {
       await dispatch(reloadData());
       alert('Заявление на ПГАС подано');
     } catch (error) {
-      setRequestError(error.message || 'Не удалось подать заявление');
+      setRequestError(
+        formatUserError(
+          error,
+          'Не удалось подать заявление. Попробуйте позже или обратитесь к администратору.'
+        )
+      );
     } finally {
       setSubmitting(false);
     }

@@ -7,7 +7,7 @@ import { getCurrentAcademicYear } from '../utils/academicYear.js';
 import {
   normalizeSubmissionPeriod,
   resolveCurrentSubmissionPeriod,
-  getCalendarSubmissionPeriod,
+  getCurrentSubmissionPeriod,
 } from '../utils/submissionPeriod.js';
 import {
   assertAchievementDescription,
@@ -151,7 +151,7 @@ router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
 
     const regulation = await prisma.regulation.findUnique({ where: { id: 1 } });
     const currentYear = getCurrentAcademicYear();
-    const calendarPeriod = getCalendarSubmissionPeriod(regulation);
+    const calendarPeriod = getCurrentSubmissionPeriod(regulation);
 
     const updated = await prisma.$transaction(async (tx) => {
       await tx.achievement.updateMany({

@@ -17,7 +17,9 @@ export function getCurrentSubmissionPeriod(regulations, referenceDate = new Date
 
 /** Период по календарю (июнь–август — летняя сессия, иначе зимняя). */
 export function getCalendarSubmissionPeriod(referenceDate = new Date()) {
-  const month = referenceDate.getMonth();
+  const date = referenceDate instanceof Date ? referenceDate : new Date(referenceDate);
+  const safeDate = Number.isFinite(date.getTime()) ? date : new Date();
+  const month = safeDate.getMonth();
   return month >= 5 && month <= 7 ? SUBMISSION_PERIODS.SUMMER : SUBMISSION_PERIODS.WINTER;
 }
 
