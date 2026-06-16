@@ -4,6 +4,15 @@ const MAX_ATTACHMENTS = 10;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_MIME = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
 const ALLOWED_DATA_PREFIX = /^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,/i;
+const MIME_ALIASES = {
+  'image/jpg': 'image/jpeg',
+  'image/pjpeg': 'image/jpeg',
+};
+
+function normalizeMimeType(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  return MIME_ALIASES[raw] || raw;
+}
 
 function hasSignature(buffer, signature, offset = 0) {
   if (!buffer || buffer.length < offset + signature.length) return false;
@@ -45,7 +54,7 @@ export function assertValidAttachments(raw) {
 
   return raw.map((item, index) => {
     const name = String(item?.name || '').trim().slice(0, 255);
-    const mimeType = String(item?.mimeType || '').trim().toLowerCase();
+    const mimeType = normalizeMimeType(item?.mimeType);
     const dataUrl = String(item?.dataUrl || '');
     const size = Number(item?.size || 0);
 
