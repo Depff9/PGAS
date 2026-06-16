@@ -96,7 +96,11 @@ export default function AchievementReviewModal({
         {achievement.attachments?.length > 0 && (
           <div className="form-group">
             <label>Вложения</label>
-            <AttachmentList attachments={achievement.attachments} />
+            <AttachmentList
+              attachments={achievement.attachments}
+              achievementId={achievement.id}
+              secureDownload
+            />
           </div>
         )}
 

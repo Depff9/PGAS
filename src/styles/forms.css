@@ -652,20 +652,23 @@
 .attachment-preview__body {
   min-height: 280px;
   max-height: 70vh;
-  overflow: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: #f4f7fb;
   border-radius: var(--radius);
   padding: 1rem;
 }
 
+.attachment-preview__viewport {
+  max-height: calc(70vh - 2rem);
+  overflow: auto;
+  text-align: center;
+  padding: 0.25rem;
+  width: 100%;
+}
+
 .attachment-preview__image {
-  max-width: 100%;
+  display: inline-block;
+  vertical-align: top;
   height: auto;
-  transform-origin: center center;
-  transition: transform 0.15s ease;
 }
 
 .attachment-preview__iframe {

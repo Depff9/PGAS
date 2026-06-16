@@ -26,6 +26,9 @@ const CATEGORY_LABELS = {
   groups: 'Группы',
   tooltips: 'Подсказки',
   directions: 'Направления',
+  'submissions.submit': 'Подача заявления',
+  'application.attachment': 'Вложения',
+  'attachment.download': 'Скачивание файлов',
   general: 'Общее',
 };
 
@@ -37,6 +40,8 @@ const ACTION_LABELS = {
   update: 'Изменение',
   delete: 'Удаление',
   review: 'Рассмотрение',
+  submit: 'Подача',
+  download: 'Скачивание',
 };
 
 const SUBMISSION_STATUS_LABELS = {

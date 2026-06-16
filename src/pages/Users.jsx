@@ -463,7 +463,7 @@ export default function Users() {
               required
             />
           </div>
-          <div className="form-group">
+          <div className="form-group form-group--patronymic">
             <label>Отчество</label>
             <input
               value={form.middleName}
@@ -472,36 +472,40 @@ export default function Users() {
               }
               disabled={hasNoMiddleName}
             />
-            <label
-              className="form-group__checkbox"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                marginTop: '0.45rem',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={hasNoMiddleName}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setHasNoMiddleName(checked);
-                  if (checked) {
-                    setMiddleNameDraft(form.middleName);
-                    setForm({ ...form, middleName: '' });
-                  } else {
-                    setForm({ ...form, middleName: middleNameDraft });
-                    setMiddleNameDraft('');
-                  }
-                }}
-              />
-              Нет отчества
-            </label>
           </div>
-          <button type="submit" className="btn btn--primary btn--sm inline-form__submit">
-            Добавить
-          </button>
+          <div className="form-group form-group--submit">
+            <label className="inline-form__label-spacer" aria-hidden="true">
+              &nbsp;
+            </label>
+            <button type="submit" className="btn btn--primary btn--sm">
+              Добавить
+            </button>
+          </div>
+          <label
+            className="inline-form__no-middle form-group__checkbox"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={hasNoMiddleName}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setHasNoMiddleName(checked);
+                if (checked) {
+                  setMiddleNameDraft(form.middleName);
+                  setForm({ ...form, middleName: '' });
+                } else {
+                  setForm({ ...form, middleName: middleNameDraft });
+                  setMiddleNameDraft('');
+                }
+              }}
+            />
+            Нет отчества
+          </label>
         </form>
       </div>
 

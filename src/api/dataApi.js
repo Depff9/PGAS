@@ -2,6 +2,34 @@ import { apiRequest } from './client';
 import { getToken } from './client';
 import { getActiveDeadlineIso } from '../utils/submissionDeadlines';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+
+export async function downloadAchievementAttachment(achievementId, attachmentId) {
+  const token = getToken();
+  const response = await fetch(
+    `${API_BASE_URL}/achievements/${achievementId}/attachments/${attachmentId}/download`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Не удалось скачать файл');
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  const filename = match ? decodeURIComponent(match[1]) : 'attachment';
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function fetchPublicReferenceData() {
   return apiRequest('/reference/public');
 }

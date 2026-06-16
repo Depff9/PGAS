@@ -13,6 +13,8 @@ import {
   assertAchievementTitle,
 } from '../utils/achievementValidation.js';
 import { enforceMinimumScoreRules } from '../utils/minScore.js';
+import { recordAuditEntry } from '../utils/auditHistory.js';
+import { formatUserName } from '../utils/userName.js';
 
 const router = Router();
 
@@ -164,6 +166,40 @@ router.patch('/:id/submit', requireRoles('student'), async (req, res, next) => {
           updatedAt: new Date(),
         },
       });
+    });
+
+    const student = await prisma.user.findUnique({
+      where: { id: req.auth.id },
+      select: { lastName: true, firstName: true, middleName: true },
+    });
+    const attachmentNames = [
+      ...new Set(
+        achievements
+          .flatMap((item) => (Array.isArray(item.attachments) ? item.attachments : []))
+          .map((file) => String(file?.name || '').trim())
+          .filter(Boolean)
+      ),
+    ];
+    const periodLabel = submission.period === 'winter' ? 'зимней сессии' : 'летней сессии';
+    let summary = `Подано заявление на ПГАС (${submission.academicYear}, ${periodLabel})`;
+    if (attachmentNames.length === 1) {
+      summary += `. К заявлению приложен файл «${attachmentNames[0]}»`;
+    } else if (attachmentNames.length > 1) {
+      summary += `. К заявлению приложены файлы: ${attachmentNames.map((name) => `«${name}»`).join(', ')}`;
+    }
+
+    await recordAuditEntry({
+      action: 'submit',
+      entity: 'submissions.submit',
+      summary,
+      createdBy: req.auth.id,
+      userName: formatUserName(student),
+      targetId: submission.id,
+      metadata: {
+        academicYear: submission.academicYear,
+        period: submission.period,
+        attachmentNames,
+      },
     });
 
     res.json(updated);

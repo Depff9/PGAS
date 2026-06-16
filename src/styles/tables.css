@@ -170,14 +170,38 @@
 
 .inline-form--users {
   display: grid;
-  grid-template-columns: repeat(5, minmax(140px, 1fr));
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
+  grid-template-rows: auto auto;
   gap: 0.75rem;
-  align-items: start;
+  align-items: end;
 }
 
 .inline-form--users .form-group {
   display: flex;
   flex-direction: column;
+}
+
+.inline-form--users .form-group--patronymic {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.inline-form--users .form-group--submit {
+  grid-column: 5;
+  grid-row: 1;
+}
+
+.inline-form--users .inline-form__no-middle {
+  grid-column: 4;
+  grid-row: 2;
+  margin-top: -0.15rem;
+}
+
+.inline-form--users .inline-form__label-spacer {
+  visibility: hidden;
+  margin-bottom: 0.4rem;
+  font-size: 0.875rem;
+  line-height: 1.2;
 }
 
 .inline-form--users .form-group__checkbox {
@@ -186,12 +210,20 @@
   color: var(--color-text);
 }
 
-.inline-form--users .inline-form__submit {
-  justify-self: start;
-}
-
 @media (max-width: 1200px) {
   .inline-form--users {
-    grid-template-columns: repeat(3, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .inline-form--users .form-group--patronymic,
+  .inline-form--users .inline-form__no-middle {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .inline-form--users .form-group--submit {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    justify-self: start;
   }
 }

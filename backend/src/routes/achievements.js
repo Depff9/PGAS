@@ -9,8 +9,40 @@ import {
   assertAchievementDescription,
   assertAchievementTitle,
 } from '../utils/achievementValidation.js';
+import { recordAuditEntry } from '../utils/auditHistory.js';
+import { formatUserName } from '../utils/userName.js';
+import { sanitizeDownloadFilename } from '../utils/downloadFilename.js';
 
 const router = Router();
+
+function listAttachments(raw) {
+  return Array.isArray(raw) ? raw : [];
+}
+
+async function auditNewAttachments({ attachments, existingAttachments, userId, achievement, submissionId }) {
+  const existingIds = new Set(existingAttachments.map((item) => item.id));
+  const actor = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { lastName: true, firstName: true, middleName: true },
+  });
+
+  for (const file of attachments) {
+    if (existingIds.has(file.id)) continue;
+    await recordAuditEntry({
+      action: 'create',
+      entity: 'application.attachment',
+      summary: `К заявлению приложен файл «${file.name}»`,
+      createdBy: userId,
+      userName: formatUserName(actor),
+      targetId: submissionId || achievement.submissionId,
+      metadata: {
+        achievementId: achievement.id,
+        attachmentId: file.id,
+        fileName: file.name,
+      },
+    });
+  }
+}
 
 router.use(authRequired);
 
@@ -65,6 +97,17 @@ router.post('/', requireRoles('student'), async (req, res, next) => {
         revision: null,
       },
     });
+
+    if (attachments.length > 0) {
+      await auditNewAttachments({
+        attachments,
+        existingAttachments: [],
+        userId: req.auth.id,
+        achievement,
+        submissionId: submission.id,
+      });
+    }
+
     res.status(201).json(achievement);
   } catch (error) {
     next(error);
@@ -132,11 +175,79 @@ router.patch('/:id', async (req, res, next) => {
       where: { id },
       data: updateData,
     });
+
+    if (isStudentOwner && updateData.attachments) {
+      await auditNewAttachments({
+        attachments: updateData.attachments,
+        existingAttachments: listAttachments(existing.attachments),
+        userId: req.auth.id,
+        achievement: existing,
+        submissionId: existing.submissionId,
+      });
+    }
+
     res.json(updated);
   } catch (error) {
     next(error);
   }
 });
+
+router.get(
+  '/:id/attachments/:attachmentId/download',
+  requireRoles('commission', 'admin'),
+  async (req, res, next) => {
+    try {
+      const { id, attachmentId } = req.params;
+      const achievement = await prisma.achievement.findUnique({ where: { id } });
+      if (!achievement) throw createHttpError(404, 'Достижение не найдено');
+
+      if (req.auth.role === 'commission') {
+        assertCommissionDirectionAccess(req.auth, achievement.directionId);
+      }
+
+      const attachments = listAttachments(achievement.attachments);
+      const file = attachments.find((item) => item.id === attachmentId);
+      if (!file) throw createHttpError(404, 'Вложение не найдено');
+
+      const match = String(file.dataUrl || '').match(/^data:([^;]+);base64,(.+)$/i);
+      if (!match) throw createHttpError(400, 'Некорректное содержимое файла');
+
+      const student = await prisma.user.findUnique({
+        where: { id: achievement.userId },
+        select: { lastName: true, firstName: true, middleName: true },
+      });
+      const actor = await prisma.user.findUnique({
+        where: { id: req.auth.id },
+        select: { lastName: true, firstName: true, middleName: true },
+      });
+
+      await recordAuditEntry({
+        action: 'download',
+        entity: 'attachment.download',
+        summary: `Скачан файл «${file.name}» (заявление студента ${formatUserName(student)})`,
+        createdBy: req.auth.id,
+        userName: formatUserName(actor),
+        targetId: achievement.submissionId,
+        metadata: {
+          achievementId: achievement.id,
+          attachmentId: file.id,
+          fileName: file.name,
+        },
+      });
+
+      const safeName = sanitizeDownloadFilename(file.name);
+      const buffer = Buffer.from(match[2], 'base64');
+      res.setHeader('Content-Type', file.mimeType || match[1]);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename*=UTF-8''${encodeURIComponent(safeName)}`
+      );
+      res.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 router.delete('/:id', requireRoles('student', 'admin'), async (req, res, next) => {
   try {

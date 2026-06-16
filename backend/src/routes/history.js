@@ -15,6 +15,8 @@ const ALLOWED_ACTIONS = new Set([
   'login',
   'logout',
   'register',
+  'submit',
+  'download',
 ]);
 
 const ALLOWED_ENTITIES = new Set([
@@ -30,6 +32,9 @@ const ALLOWED_ENTITIES = new Set([
   'tooltips',
   'directions',
   'scoring',
+  'submissions.submit',
+  'application.attachment',
+  'attachment.download',
   'general',
 ]);
 

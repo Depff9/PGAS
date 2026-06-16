@@ -5,7 +5,7 @@ import { getCurrentSubmissionPeriod, normalizeSubmissionPeriod } from './submiss
 import { getEffectiveScore } from './scoring';
 import {
   normalizeSubmissionDeadlines,
-  wallClockToTimestamp,
+  isDeadlineReached,
 } from './submissionDeadlines';
 
 export function getDirectionLimit(regulations, directionId) {
@@ -36,35 +36,24 @@ export function getStudentSubmission(
 export function isHistoricalSubmission(submission, regulations, referenceDate = new Date()) {
   if (!submission) return false;
 
-  const currentYear = getCurrentAcademicYear(referenceDate);
-  if (!isSameAcademicYear(submission.academicYear, currentYear)) {
-    return true;
-  }
-
-  const subPeriod = normalizeSubmissionPeriod(submission.period);
-  const activePeriod = getCurrentSubmissionPeriod(regulations, referenceDate);
-  if (subPeriod !== activePeriod) {
+  const now = referenceDate.getTime();
+  if (!isSameAcademicYear(submission.academicYear, getCurrentAcademicYear(referenceDate))) {
     return true;
   }
 
   const deadlines = normalizeSubmissionDeadlines(regulations);
+  const subPeriod = normalizeSubmissionPeriod(submission.period);
   const endsAt = deadlines[subPeriod]?.endsAt;
-  if (!endsAt) return false;
-
-  const deadlineTs = wallClockToTimestamp(endsAt, referenceDate);
-  if (!Number.isFinite(deadlineTs)) return false;
-
-  return referenceDate.getTime() > deadlineTs;
+  return isDeadlineReached(endsAt, now);
 }
 
 export function isCurrentPeriodSubmission(submission, regulations, referenceDate = new Date()) {
-  if (!submission) return false;
-  const year = getCurrentAcademicYear(referenceDate);
-  const period = getCurrentSubmissionPeriod(regulations, referenceDate);
-  return (
-    isSameAcademicYear(submission.academicYear, year) &&
-    (submission.period || 'summer') === period
-  );
+  if (!submission || isHistoricalSubmission(submission, regulations, referenceDate)) {
+    return false;
+  }
+
+  const deadlines = normalizeSubmissionDeadlines(regulations);
+  return normalizeSubmissionPeriod(submission.period) === deadlines.activePeriod;
 }
 
 export function getOrCreateSubmission(
