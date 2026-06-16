@@ -18,7 +18,7 @@ app.use(
   })
 );
 app.use(helmet());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '5mb' }));
 if (!config.isProduction) {
   app.use(morgan('dev'));
 }

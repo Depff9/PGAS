@@ -28,10 +28,17 @@ export async function apiRequest(path, options = {}) {
 
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers,
-  });
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (_error) {
+    throw new Error(
+      'Не удалось связаться с сервером. Проверьте подключение и доступность API.'
+    );
+  }
 
   if (response.status === 401) {
     setToken(null);
