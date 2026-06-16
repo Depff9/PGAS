@@ -16,6 +16,7 @@ export default function CommissionExport() {
     { id: 'student', label: 'Студент' },
     { id: 'group', label: 'Группа' },
     { id: 'faculty', label: 'Факультет' },
+    { id: 'submittedAt', label: 'Дата подачи' },
     { id: 'submissionStatus', label: 'Статус заявления' },
     { id: 'totalScore', label: 'Сумма баллов' },
     { id: 'direction', label: 'Направление' },

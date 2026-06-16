@@ -3,6 +3,7 @@ import TooltipInfo from './TooltipInfo';
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { getEventLevels } from '../constants/eventLevels';
 import { readFileAsAttachment, MAX_ATTACHMENTS } from '../utils/files';
+import { AttachmentList } from './AttachmentPreviewModal';
 
 export default function AchievementEditModal({
   achievement,
@@ -147,22 +148,22 @@ export default function AchievementEditModal({
           />
           {fileError && <p className="form-hint" style={{ color: '#b91c1c' }}>{fileError}</p>}
           {attachments.length > 0 && (
-            <ul className="file-list">
-              {attachments.map((f) => (
-                <li key={f.id}>
-                  <a href={f.dataUrl} download={f.name} target="_blank" rel="noreferrer">
-                    {f.name}
-                  </a>
-                  <button
-                    type="button"
-                    className="btn btn--ghost btn--sm"
-                    onClick={() => setAttachments(attachments.filter((x) => x.id !== f.id))}
-                  >
-                    Удалить
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <AttachmentList attachments={attachments} />
+              <ul className="file-list file-list--actions">
+                {attachments.map((f) => (
+                  <li key={f.id}>
+                    <button
+                      type="button"
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => setAttachments(attachments.filter((x) => x.id !== f.id))}
+                    >
+                      Удалить «{f.name}»
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
         <p className="form-hint" style={{ marginBottom: '0.75rem' }}>

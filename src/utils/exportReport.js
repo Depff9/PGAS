@@ -8,6 +8,15 @@ import { getEffectiveScore } from './scoring';
 import { UNIVERSITY } from '../config/university';
 import { getSubmissionAchievements, getSubmissionTotalScore } from './submissions';
 
+function formatSubmissionDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return date.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
 const LEVEL_LABELS = {
   faculty: 'Внутривузовский',
   regional: 'Региональный',
@@ -19,6 +28,7 @@ const DEFAULT_EXPORT_COLUMNS = [
   { id: 'student', label: 'Студент' },
   { id: 'group', label: 'Группа' },
   { id: 'faculty', label: 'Факультет' },
+  { id: 'submittedAt', label: 'Дата подачи' },
   { id: 'submissionStatus', label: 'Статус заявления' },
   { id: 'totalScore', label: 'Сумма баллов' },
   { id: 'direction', label: 'Направление' },
@@ -40,11 +50,14 @@ export function buildExportRows(submissions, achievements, users, directions, fa
         (a) => a.title && a.status !== 'draft'
       );
 
+      const submittedAt = formatSubmissionDate(sub.submittedAt || sub.createdAt);
+
       if (subAch.length === 0) {
         rows.push({
           student: student ? formatFullName(student) : '—',
           group: student?.group || '—',
           faculty: faculty ? getFacultyLabel(faculty) : '—',
+          submittedAt,
           submissionStatus: SUBMISSION_STATUS_LABELS[sub.status] || sub.status,
           totalScore: 0,
           direction: '—',
@@ -63,6 +76,7 @@ export function buildExportRows(submissions, achievements, users, directions, fa
           student: student ? formatFullName(student) : '—',
           group: student?.group || '—',
           faculty: faculty ? getFacultyLabel(faculty) : '—',
+          submittedAt,
           submissionStatus: SUBMISSION_STATUS_LABELS[sub.status] || sub.status,
           totalScore: getSubmissionTotalScore(subAch),
           direction: dir?.title || '—',

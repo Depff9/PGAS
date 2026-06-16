@@ -12,6 +12,7 @@ import { buildRegulationsUpdatedNotification } from '../utils/notifications';
 import { dataApi } from '../api/dataApi';
 import SubmissionDeadlinesEditor from '../components/SubmissionDeadlinesEditor';
 import { DEFAULT_EVENT_LEVELS, getEventLevels } from '../constants/eventLevels';
+import { getActiveDirections } from '../utils/directions';
 import {
   buildDeadlineSectionContent,
   formatDeadlineLabel,
@@ -23,6 +24,7 @@ export default function Regulations({ readOnly = false }) {
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const directions = useAppSelector((s) => s.data.directions);
+  const activeDirections = getActiveDirections(directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const history = useAppSelector((s) => s.data.history);
   const users = useAppSelector((s) => s.data.users);
@@ -199,9 +201,9 @@ export default function Regulations({ readOnly = false }) {
             <div className="form-row form-row--2" style={{ marginBottom: '0.5rem' }}>
               {localLevels.map((l) => (
                 <div key={l.id} className="form-group">
-                  <label>{l.id}</label>
                   <input
                     value={l.label}
+                    aria-label={`Уровень: ${l.label}`}
                     onChange={(e) =>
                       setLocalLevels(
                         localLevels.map((x) =>
@@ -260,7 +262,7 @@ export default function Regulations({ readOnly = false }) {
                 onChange={(e) => setDefaultMax(e.target.value)}
               />
             </div>
-            {directions.map((d) => (
+            {activeDirections.map((d) => (
               <div key={d.id} className="form-row form-row--2" style={{ marginBottom: '0.5rem' }}>
                 <div className="form-group">
                   <label>{d.title}</label>
@@ -299,7 +301,7 @@ export default function Regulations({ readOnly = false }) {
           <div className="card editor-block">
             <h3>Лимиты по направлениям</h3>
             <ul>
-              {directions.map((d) => (
+              {activeDirections.map((d) => (
                 <li key={d.id}>
                   {d.title}:{' '}
                   {regulations.directionLimits?.[d.id] ?? regulations.defaultMaxPerDirection ?? 7}

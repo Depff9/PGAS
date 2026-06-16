@@ -107,22 +107,15 @@ cd /var/www/pgas-system
 
 ---
 
-## GitHub Actions: настройка секретов
+**CI** и **CD** описаны в [`docs/CICD.md`](CICD.md). Кратко:
 
-В репозитории: **Settings → Secrets and variables → Actions → New repository secret**
+| Secret | Назначение |
+|--------|------------|
+| `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` | SSH на VPS |
+| `VITE_API_URL` | URL API при сборке фронта |
+| `DEPLOY_MODE` | `pm2` (default) или `docker` |
 
-| Secret | Пример | Назначение |
-|--------|--------|------------|
-| `VPS_HOST` | IP или домен сервера | SSH-хост |
-| `VPS_USER` | `root` | SSH-пользователь |
-| `VPS_SSH_KEY` | содержимое приватного ключа | SSH-доступ |
-| `VPS_APP_DIR` | `/var/www/pgas-system` | Путь к проекту (опционально) |
-| `VITE_API_URL` | `https://api.pgas-demo-site.online/api` | URL API при сборке фронта |
-
-**CI** (`ci.yml`) — запускается на каждый push/PR: lint, build, проверка Docker.  
-**Deploy** (`deploy.yml`) — при push в `main` или вручную: SSH + `deploy-docker.sh`.
-
-> Если не хотите автодеплой при каждом push — удалите блок `push:` из `deploy.yml` и оставьте только `workflow_dispatch` (деплой по кнопке).
+Workflow: `.github/workflows/ci.yml` — test на каждый PR/push, deploy на `main` после успешного test.
 
 ---
 

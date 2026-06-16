@@ -5,7 +5,7 @@ RUN apk add --no-cache openssl
 FROM base AS deps
 COPY backend/package.json backend/package-lock.json ./backend/
 WORKDIR /workspace/backend
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM base AS runner
 ENV NODE_ENV=production

@@ -1,8 +1,12 @@
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 import { SUBMISSION_STATUS } from '../constants/submissions';
 import { getCurrentAcademicYear, isSameAcademicYear } from './academicYear';
-import { getCurrentSubmissionPeriod } from './submissionPeriod';
+import { getCurrentSubmissionPeriod, normalizeSubmissionPeriod } from './submissionPeriod';
 import { getEffectiveScore } from './scoring';
+import {
+  normalizeSubmissionDeadlines,
+  wallClockToTimestamp,
+} from './submissionDeadlines';
 
 export function getDirectionLimit(regulations, directionId) {
   const limits = regulations?.directionLimits || {};
@@ -31,7 +35,26 @@ export function getStudentSubmission(
 
 export function isHistoricalSubmission(submission, regulations, referenceDate = new Date()) {
   if (!submission) return false;
-  return !isCurrentPeriodSubmission(submission, regulations, referenceDate);
+
+  const currentYear = getCurrentAcademicYear(referenceDate);
+  if (!isSameAcademicYear(submission.academicYear, currentYear)) {
+    return true;
+  }
+
+  const subPeriod = normalizeSubmissionPeriod(submission.period);
+  const activePeriod = getCurrentSubmissionPeriod(regulations, referenceDate);
+  if (subPeriod !== activePeriod) {
+    return true;
+  }
+
+  const deadlines = normalizeSubmissionDeadlines(regulations);
+  const endsAt = deadlines[subPeriod]?.endsAt;
+  if (!endsAt) return false;
+
+  const deadlineTs = wallClockToTimestamp(endsAt, referenceDate);
+  if (!Number.isFinite(deadlineTs)) return false;
+
+  return referenceDate.getTime() > deadlineTs;
 }
 
 export function isCurrentPeriodSubmission(submission, regulations, referenceDate = new Date()) {

@@ -1,6 +1,7 @@
 # Server quick tutorial
 
-> Docker-деплой (рекомендуется для продакшена): [`docs/DOCKER.md`](docs/DOCKER.md) и `./scripts/deploy-docker.sh`
+> **CI/CD (рекомендуется):** [`docs/CICD.md`](docs/CICD.md) — GitHub Actions + `./scripts/deploy-pm2.sh`  
+> Docker-деплой: [`docs/DOCKER.md`](docs/DOCKER.md) и `./scripts/deploy-docker.sh`
 
 ## First deploy (classic: pm2 + host PostgreSQL)
 

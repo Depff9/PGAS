@@ -4,12 +4,14 @@ import TooltipInfo from '../components/TooltipInfo';
 import { useAppSelector } from '../store/hooks';
 import { ROLES } from '../mock/users';
 import { UNIVERSITY } from '../config/university';
+import { formatDirectionsList, getActiveDirections } from '../utils/directions';
 import { getActiveDeadlineHomeLabel } from '../utils/submissionDeadlines';
 
 export default function Home() {
   const user = useAppSelector((s) => s.auth.user);
   const regulations = useAppSelector((s) => s.data.regulations);
   const directions = useAppSelector((s) => s.data.directions);
+  const activeDirections = getActiveDirections(directions);
 
   const ctaTo =
     user?.role === ROLES.ADMIN
@@ -52,7 +54,7 @@ export default function Home() {
             <h3>Что важно студенту</h3>
             <div className="hero__stats">
               <div className="hero__stat">
-                <strong>{directions.length}</strong>
+                <strong>{activeDirections.length}</strong>
                 <span>направлений для заявлений</span>
               </div>
               <div className="hero__stat">
@@ -86,8 +88,7 @@ export default function Home() {
             <Link to="/regulations">«Регламент»</Link>.
           </li>
           <li>
-            <strong>Выберите направление</strong> — учебная, научная, общественная,
-            культурно-творческая или спортивная деятельность.
+            <strong>Выберите направление</strong> — {formatDirectionsList(directions)}.
           </li>
           <li>
             <strong>Заполните одно заявление</strong> — внутри таблица достижений по

@@ -12,6 +12,7 @@ import { dataApi } from '../api/dataApi';
 import { isValidPersonName, sanitizePersonNameInput } from '../utils/personName';
 import SortableHeader from '../components/SortableHeader';
 import { sortBySelectors, toggleSortState } from '../utils/tableSort';
+import { getActiveDirections } from '../utils/directions';
 
 function buildCommissionPermissions(permissions) {
   return {
@@ -28,6 +29,7 @@ export default function Users() {
   const faculties = useAppSelector((s) => s.data.faculties);
   const groups = useAppSelector((s) => s.data.groups);
   const directions = useAppSelector((s) => s.data.directions);
+  const activeDirections = getActiveDirections(directions);
   const currentUser = useAppSelector((s) => s.auth.user);
   const history = useAppSelector((s) => s.data.history);
   const currentPath = location.pathname;
@@ -90,10 +92,16 @@ export default function Users() {
   };
 
   const startEdit = (u) => {
+    let facultyId = u.facultyId || '';
+    const group = u.group || '';
+    if (!facultyId && group) {
+      const groupRecord = groups.find((g) => g.name === group);
+      if (groupRecord) facultyId = groupRecord.facultyId;
+    }
     setEditId(u.id);
     setEditForm({
-      facultyId: u.facultyId || '',
-      group: u.group || '',
+      facultyId,
+      group,
       recordBookNumber: u.recordBookNumber || '',
       studentCardNumber: u.studentCardNumber || '',
       firstName: u.firstName || '',
@@ -210,6 +218,97 @@ export default function Users() {
       alert('Отчество должно содержать только русские буквы (допустим дефис)');
       return;
     }
+
+    const email = form.email.trim().toLowerCase();
+    const existing = users.find((u) => u.email.toLowerCase() === email);
+
+    if (existing) {
+      if (existing.role === mode) {
+        alert('Пользователь с таким email уже есть в этом списке');
+        return;
+      }
+      if (
+        !confirm(
+          `Перенести ${formatFullName(existing)} из «${ROLE_LABELS[existing.role]}» в «${ROLE_LABELS[mode]}»?`
+        )
+      ) {
+        return;
+      }
+
+      const movedUser = migrateUser(
+        {
+          ...existing,
+          role: mode,
+          firstName: form.firstName.trim() || existing.firstName,
+          lastName: form.lastName.trim() || existing.lastName,
+          middleName: hasNoMiddleName ? null : form.middleName.trim() || existing.middleName,
+          facultyId: mode === ROLES.STUDENT ? existing.facultyId : null,
+          group: mode === ROLES.STUDENT ? existing.group : null,
+          recordBookNumber: mode === ROLES.STUDENT ? existing.recordBookNumber : null,
+          studentCardNumber: mode === ROLES.STUDENT ? existing.studentCardNumber : null,
+          permissions:
+            mode === ROLES.COMMISSION
+              ? existing.permissions || {
+                  canEditRegulations: false,
+                  canEditDirections: false,
+                  allowedDirectionIds: [],
+                }
+              : null,
+        },
+        faculties
+      );
+
+      dispatch(setUsers(users.map((u) => (u.id === existing.id ? movedUser : u))));
+      const remoteUpdated = await dataApi
+        .updateUser(existing.id, {
+          role: movedUser.role,
+          firstName: movedUser.firstName,
+          lastName: movedUser.lastName,
+          middleName: movedUser.middleName,
+          facultyId: movedUser.facultyId,
+          group: movedUser.group,
+          recordBookNumber: movedUser.recordBookNumber,
+          studentCardNumber: movedUser.studentCardNumber,
+          permissions: movedUser.permissions,
+        })
+        .catch((error) => {
+          setRequestError(error.message || 'Не удалось перенести пользователя');
+          return null;
+        });
+      if (remoteUpdated?.id) {
+        dispatch(
+          setUsers(
+            users.map((u) =>
+              u.id === remoteUpdated.id ? migrateUser(remoteUpdated, faculties) : u
+            )
+          )
+        );
+      }
+
+      const historyEntry = createHistoryEntry({
+        category: 'admin.users',
+        action: 'update',
+        summary: `Пользователь перенесён в ${ROLE_LABELS[mode]}: ${formatFullName(movedUser)}`,
+        userId: currentUser.id,
+        userName: formatFullName(currentUser),
+        targetId: existing.id,
+        metadata: { role: mode, email: movedUser.email },
+      });
+      dispatch(setHistory([historyEntry, ...history]));
+      await dataApi.saveHistoryEntry(historyEntry).catch(() => null);
+      setForm({
+        email: '',
+        password: 'demo123',
+        role: ROLES.STUDENT,
+        lastName: '',
+        firstName: '',
+        middleName: '',
+      });
+      setHasNoMiddleName(false);
+      setMiddleNameDraft('');
+      return;
+    }
+
     const newUser = migrateUser(
       {
         id: 'u' + Date.now(),
@@ -400,10 +499,6 @@ export default function Users() {
               Нет отчества
             </label>
           </div>
-          <div className="form-group">
-            <label>Роль</label>
-            <input value={ROLE_LABELS[mode]} disabled />
-          </div>
           <button type="submit" className="btn btn--primary btn--sm inline-form__submit">
             Добавить
           </button>
@@ -438,21 +533,13 @@ export default function Users() {
                   onToggle={(key) => setSortState(toggleSortState(sortState, key))}
                 />
               </th>
-              <th>
-                <SortableHeader
-                  label="Роль"
-                  sortKey="role"
-                  sortState={sortState}
-                  onToggle={(key) => setSortState(toggleSortState(sortState, key))}
-                />
-              </th>
               <th>Действия</th>
             </tr>
           </thead>
           <tbody>
             {sortedUsers.length === 0 && (
               <tr>
-                <td colSpan={5} className="empty-state">
+                <td colSpan={4} className="empty-state">
                   Список пуст
                 </td>
               </tr>
@@ -475,7 +562,6 @@ export default function Users() {
                       '—'
                     )}
                   </td>
-                  <td>{ROLE_LABELS[u.role]}</td>
                   <td>
                     <div className="table-actions">
                       {(u.role === ROLES.STUDENT ||
@@ -507,7 +593,7 @@ export default function Users() {
                 </tr>
                 {editId === u.id && editForm && (
                   <tr key={`${u.id}-edit`}>
-                    <td colSpan={5}>
+                    <td colSpan={4}>
                       <div className="editor-block">
                         {u.role === ROLES.STUDENT && (
                           <>
@@ -596,6 +682,12 @@ export default function Users() {
                                   }
                                 >
                                   <option value="">— не назначена —</option>
+                                  {editForm.group &&
+                                    !facultyGroups(editForm.facultyId).some(
+                                      (g) => g.name === editForm.group
+                                    ) && (
+                                      <option value={editForm.group}>{editForm.group}</option>
+                                    )}
                                   {facultyGroups(editForm.facultyId).map((g) => (
                                     <option key={g.id} value={g.name}>
                                       {g.name}
@@ -724,7 +816,7 @@ export default function Users() {
                             <div className="form-group">
                               <label>Направления для оценки</label>
                               <div className="template-chips">
-                                {directions.map((d) => {
+                                {activeDirections.map((d) => {
                                   const selected = editForm.commissionPermissions.allowedDirectionIds.includes(
                                     d.id
                                   );

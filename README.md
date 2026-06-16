@@ -27,7 +27,7 @@ npm run dev
 npm run dev
 ```
 
-Подробнее: `RUN_ON_NEW_PC.md`, деплой на VPS: `server_tutorial.md`, Docker/CI: [`docs/DOCKER.md`](docs/DOCKER.md).
+Подробнее: `RUN_ON_NEW_PC.md`, деплой: `server_tutorial.md`, **CI/CD: [`docs/CICD.md`](docs/CICD.md)**, Docker: [`docs/DOCKER.md`](docs/DOCKER.md).
 
 ## Демо-аккаунты (пароль `demo123`)
 

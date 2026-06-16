@@ -4,9 +4,12 @@ import { commissionSidebar } from '../config/navigation';
 import { useAppSelector } from '../store/hooks';
 import { ACHIEVEMENT_STATUS } from '../constants/achievements';
 
+import { getActiveDirections } from '../utils/directions';
+
 export default function ComissionDashboard() {
   const achievements = useAppSelector((s) => s.data.achievements);
   const directions = useAppSelector((s) => s.data.directions);
+  const activeDirections = getActiveDirections(directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const user = useAppSelector((s) => s.auth.user);
 
@@ -42,9 +45,9 @@ export default function ComissionDashboard() {
           <DashboardCard
             to="/commission/directions"
             icon="🎯"
-            value={directions.length}
+            value={activeDirections.length}
             title="Направления"
-            subtitle={`${directions.length} направлений`}
+            subtitle="Управление категориями"
           />
         )}
         <DashboardCard

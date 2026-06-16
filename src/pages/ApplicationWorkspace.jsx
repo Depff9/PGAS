@@ -18,6 +18,7 @@ import { getCurrentAcademicYear, getCurrentSemesterLabel } from '../constants/su
 import { getCurrentSubmissionPeriod } from '../utils/submissionPeriod';
 import { isSameAcademicYear } from '../utils/academicYear';
 import { dataApi } from '../api/dataApi';
+import { getActiveDirections } from '../utils/directions';
 import {
   getActiveDeadlineLabel,
   isDeadlineReached as isSubmissionDeadlineReached,

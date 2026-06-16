@@ -1,0 +1,2 @@
+# Shell scripts always LF (важно для VPS/Linux)
+*.sh text eol=lf

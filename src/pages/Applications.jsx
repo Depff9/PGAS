@@ -19,6 +19,7 @@ import { SUBMISSION_STATUS } from '../constants/submissions';
 import { getCurrentSubmissionPeriod } from '../utils/submissionPeriod';
 import { getCurrentAcademicYear } from '../utils/academicYear';
 import { dataApi } from '../api/dataApi';
+import { getActiveDirections } from '../utils/directions';
 import {
   getActiveDeadlineLabel,
   isDeadlineReached as isSubmissionDeadlineReached,
@@ -30,6 +31,7 @@ export default function Applications() {
   const submissions = useAppSelector((s) => s.data.submissions);
   const achievements = useAppSelector((s) => s.data.achievements);
   const directions = useAppSelector((s) => s.data.directions);
+  const activeDirections = getActiveDirections(directions);
   const regulations = useAppSelector((s) => s.data.regulations);
   const deadlineIso = useAppSelector((s) => s.data.meta?.deadlineIso);
   const [requestError, setRequestError] = useState('');
@@ -56,7 +58,7 @@ export default function Applications() {
       submission?.status === SUBMISSION_STATUS.REVISION) &&
     !isDeadlineReached;
 
-  const byDirection = directions.map((d) => ({
+  const byDirection = activeDirections.map((d) => ({
     direction: d,
     count: subAch.filter((a) => a.directionId === d.id && a.title).length,
   }));

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Деплой на VPS с Docker (backend + PostgreSQL) и статикой через host-nginx.
-# Использование: ./scripts/deploy-docker.sh
+# Деплой на VPS без Docker: host PostgreSQL + pm2 + host nginx.
+# Использование: ./scripts/deploy-pm2.sh
 
 set -euo pipefail
 
@@ -9,25 +9,31 @@ cd "$ROOT"
 
 VITE_API_URL="${VITE_API_URL:-https://api.pgas-demo-site.online/api}"
 
-if [ ! -f .env.production ]; then
-  echo "Создайте .env.production из .env.production.example"
-  exit 1
-fi
-
 if [ "${DEPLOY_SKIP_GIT:-0}" != "1" ]; then
   echo "==> Pull latest code"
   git pull --ff-only
 fi
 
-echo "==> Build frontend"
+echo "==> Install dependencies"
 npm ci
+npm ci --prefix backend
+
+echo "==> Migrate database"
+npm run prisma:deploy --prefix backend
+
+echo "==> Build frontend"
 VITE_API_URL="$VITE_API_URL" npm run build
 
-echo "==> Start / update containers"
-docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+echo "==> Restart backend"
+if pm2 describe pgas-backend >/dev/null 2>&1; then
+  pm2 restart pgas-backend
+else
+  pm2 start backend/src/server.js --name pgas-backend
+fi
+pm2 save
 
 echo "==> Health check"
-sleep 3
+sleep 2
 curl -fsS http://127.0.0.1:4000/api/health | head -c 200
 echo ""
 

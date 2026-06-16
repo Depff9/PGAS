@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatFullName } from '../mock/users';
 import { ACHIEVEMENT_STATUS, ACHIEVEMENT_FIELDS } from '../constants/achievements';
 import { revisionTemplates } from '../mock/revisionTemplates';
+import { AttachmentList } from './AttachmentPreviewModal';
 
 export default function AchievementReviewModal({
   achievement,
@@ -95,15 +96,7 @@ export default function AchievementReviewModal({
         {achievement.attachments?.length > 0 && (
           <div className="form-group">
             <label>Вложения</label>
-            <ul className="file-list">
-              {achievement.attachments.map((f) => (
-                <li key={f.id}>
-                  <a href={f.dataUrl} target="_blank" rel="noreferrer">
-                    {f.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
+            <AttachmentList attachments={achievement.attachments} />
           </div>
         )}
 
